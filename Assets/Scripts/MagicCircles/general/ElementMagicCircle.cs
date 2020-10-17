@@ -10,6 +10,7 @@ public class ElementMagicCircle : MagicCircle
     public LinkableData<float> emissionRate = new LinkableData<float>(10);
     public ElementPhase elementPhase = ElementPhase.Liquid;
     public Collider2D magicCollider;
+    public bool autoActivate = true;
 
     ParticleMagic currentMagic;
     GameObject magicParent;
@@ -28,7 +29,7 @@ public class ElementMagicCircle : MagicCircle
     // Update is called once per frame
     void Update()
     {
-
+        UpdateElementColor();
     }
 
     void FixedUpdate()
@@ -116,7 +117,7 @@ public class ElementMagicCircle : MagicCircle
         if( currentMagic != null )
         {
             Debug.Log("Activating the " + myElement.ToString() + " Magic");
-            if( !mcParent.Contains( (int)MagicCircleType.Form ) )
+            if( autoActivate )
             {
                 Debug.Log("There ain't no shape, so we just shooting the magic");
                 currentMagic.Activate();
@@ -145,6 +146,10 @@ public class ElementMagicCircle : MagicCircle
     public void SetElement( ElementType element )
     {
         myElement = element;
+    }
+
+    void UpdateElementColor()
+    {
         if( mySpriteRenderer == null )
         {
             mySpriteRenderer = GetComponent<SpriteRenderer>();

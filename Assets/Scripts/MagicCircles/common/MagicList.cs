@@ -10,9 +10,14 @@ public class MagicList : MonoBehaviour
     List<ElementType> elementMagicListKey;
     [SerializeField]
     List<GameObject> elementMagicListValue;
+
+    public static GameObject defaultSpellNode;
+    [SerializeField]
+    GameObject editorDefaultSpellNode;
     // Start is called before the first frame update
     void Start()
     {
+        defaultSpellNode = editorDefaultSpellNode;
         elementMagicList = new Dictionary<ElementType,GameObject>();
         if( elementMagicList.Count == 0)
         {

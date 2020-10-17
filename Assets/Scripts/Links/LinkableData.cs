@@ -18,7 +18,6 @@ public class LinkableData<T>
 
     public virtual void SetLinkedValue( GetValue newLinkedValue )
     {
-        MonoBehaviour.print("HELLLLLLLLLO WE LINKING THE VALUES");
         linkedValue = newLinkedValue;
     }
 

@@ -10,8 +10,8 @@ public class MovementMagicCircle : MagicCircle
     public LinkableData<GameObject> movableMagic;
     public bool autoLinkToElementMagic = true;
 
-    public LinkableData<float> force = new LinkableData<float>(1);
     public LinkableData<float> initialVelocity = new LinkableData<float>(0);
+    public LinkableData<float> force = new LinkableData<float>(1);
     public LinkableData<float> directionAngle = new LinkableData<float>(0);
     public LinkableData<Vector3> direction = new LinkableData<Vector3>( Vector3.zero );
     public LinkableData<Vector3> targetPosition = new LinkableData<Vector3>( Vector3.zero );
@@ -19,7 +19,6 @@ public class MovementMagicCircle : MagicCircle
     public float defaultForce;
     public float defaultInitialVelocity;
     public float maxVelocity = 50;
-    public bool chooseMagic = true;
     public bool dragMagic = true;
     public PathCreation.PathCreator myPath;
     public PathCreation.EndOfPathInstruction endOfPathInstruction;
@@ -41,11 +40,23 @@ public class MovementMagicCircle : MagicCircle
         mcType = MagicCircleType.Movement;
         mySpriteRenderer = GetComponent<SpriteRenderer>();
         mySpriteRenderer.color = Color.green;
-        if( autoLinkToElementMagic && mcParent.Contains( (int)MagicCircleType.Element ) )
+        // if( autoLinkToElementMagic && mcParent.Contains( (int)MagicCircleType.Element ) )
+        // {
+        //     Debug.Log("Linked Movement to Element");
+        //     ElementMagicCircle emc = mcParent.GetMagicCircle( (int)MagicCircleType.Element ) as ElementMagicCircle;
+        //     movableMagic.SetLinkedValue( emc.GetMagicObject );
+        // }
+        if( autoLinkToElementMagic && spellParent.initialElement != null )
         {
-            Debug.Log("Linked Movement to Element");
-            ElementMagicCircle emc = mcParent.GetMagicCircle( (int)MagicCircleType.Element ) as ElementMagicCircle;
-            movableMagic.SetLinkedValue( emc.GetMagicObject );
+            MagicCircleDataLinks link = (MagicCircleDataLinks) spellParent.AddLink( LinkTypes.Data );
+            link.source = spellParent.initialElement;
+            link.destination = this;
+            link.selectedProperty = "GetMagicObject";
+            link.selectedLinkableProperty = "movableMagic";
+            link.UpdateSourceAndDestination();
+            link.link = true;
+            spellParent.initialElement.autoActivate = false;
+            // formableMagic.SetLinkedValue( emc.GetMagic );
         }
     }
 
@@ -53,6 +64,8 @@ public class MovementMagicCircle : MagicCircle
     void Update()
     {
         defaultForce = force.Value();
+        defaultDirectionAngle = directionAngle.Value();
+        defaultInitialVelocity = initialVelocity.Value();
         DrawLink();
         if( myMovement == MovementType.Path && myPath == null )
         {
@@ -62,8 +75,8 @@ public class MovementMagicCircle : MagicCircle
 
     void FixedUpdate()
     {
-        initialVelocity.SetDefaultValue( defaultInitialVelocity );
-        directionAngle.SetDefaultValue( defaultDirectionAngle );
+        // initialVelocity.SetDefaultValue( defaultInitialVelocity );
+        // directionAngle.SetDefaultValue( defaultDirectionAngle );
         direction.SetDefaultValue( new Vector3( Mathf.Cos( Mathf.Deg2Rad * directionAngle.Value() ), Mathf.Sin( Mathf.Deg2Rad * directionAngle.Value() ), 0 ) );
         targetPosition.SetDefaultValue( Vector3.Scale( Camera.main.ScreenToWorldPoint(Input.mousePosition), new Vector3(1,1,0) ) );
         if( isActive )
@@ -71,7 +84,7 @@ public class MovementMagicCircle : MagicCircle
             if( movableMagic.Value() != null && magicControllerTracker.IsCurrentMoveController( this ) )
             {
                 ParticleMagic pm;
-                if( chooseMagic && ( pm = movableMagic.Value().GetComponent<ParticleMagic>() as ParticleMagic ) != null )
+                if( ( pm = movableMagic.Value().GetComponent<ParticleMagic>() as ParticleMagic ) != null )
                 {
                     // Copy all the movement values to the particle magic controller
                     pm.force = force.Value();
@@ -159,13 +172,10 @@ public class MovementMagicCircle : MagicCircle
             // print( "We got the current magic: " + formableMagic.Value().gameObject.name );
             Debug.Log("Activating movement");
 
-            if( chooseMagic )
+            ParticleMagic pm = movableMagic.Value().GetComponent<ParticleMagic>() as ParticleMagic;
+            if( pm != null )
             {
-                ParticleMagic pm = movableMagic.Value().GetComponent<ParticleMagic>() as ParticleMagic;
-                if( pm != null )
-                {
-                    pm.SetMovement( myMovement );
-                }
+                pm.SetMovement( myMovement );
             }
 
             magicControllerTracker = movableMagic.Value().GetComponent<MagicControllerTracker>();

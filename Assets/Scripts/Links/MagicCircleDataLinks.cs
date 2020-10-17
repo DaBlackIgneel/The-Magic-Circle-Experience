@@ -5,13 +5,14 @@ using System;
 using System.Reflection;
 using System.Linq.Expressions;
 
-public class MagicCircleDataLinks: MonoBehaviour
+public class MagicCircleDataLinks: MagicCircleLinks
 {
 
-    public MagicCircle source;
-    public MagicCircle destination;
-    MagicCircle oldSource;
-    MagicCircle oldDestination;
+    // These are declared in the parent class
+    // public MagicCircle source;
+    // public MagicCircle destination;
+    SpellNode oldSource;
+    SpellNode oldDestination;
 
     public delegate object InputFunction();
     public InputFunction inputFunction;
@@ -86,6 +87,8 @@ public class MagicCircleDataLinks: MonoBehaviour
                 }
             }
         }
+
+        DrawLink();
     }
 
     // only links the activator method if the input is a boolean
@@ -96,7 +99,7 @@ public class MagicCircleDataLinks: MonoBehaviour
         {
             boolLinkedFunction = mi;
             linkedActivatableFunction = destination.GetType().GetMethod( selectedActivatableFunction );
-            print("Successfully linked bool with activatable function");
+            Debug.Log("Successfully linked bool with activatable function");
         }
         else
         {
@@ -115,7 +118,7 @@ public class MagicCircleDataLinks: MonoBehaviour
             {
                 // Activate the function
                 linkedActivatableFunction.Invoke(destination, null);
-                print("Activated the method");
+                Debug.Log("Activated the method");
             }
             lastActiveState = activeState;
         }
@@ -131,13 +134,11 @@ public class MagicCircleDataLinks: MonoBehaviour
             string linkTypeStr = fi.FieldType.ToString().Split('[')[1].Split(']')[0];
             if( linkTypeStr.Contains("UnityEngine") )
             {
-                MonoBehaviour.print("Assembly Name: " + typeof(GameObject).AssemblyQualifiedName );
                 string AssemblyName = typeof(GameObject).AssemblyQualifiedName;
                 linkTypeStr = linkTypeStr + AssemblyName.Substring(AssemblyName.IndexOf(",") );
             }
             conversionTypes[0] = mi.ReturnType;
             conversionTypes[1] = Type.GetType(linkTypeStr);
-            print( "you need to convert " + conversionTypes[0].ToString() + " to " + conversionTypes[1].ToString() );
             return conversionTypes;
         }
         else
@@ -154,7 +155,6 @@ public class MagicCircleDataLinks: MonoBehaviour
         {
             LinkableFinder.LinkField( selectedLinkableProperty, destination, selectedProperty, source );
         }
-        print("picking conversion from " + originType.ToString() + " to " + targetType.ToString() );
 
         if( originType == typeof( GameObject ) )
         {
@@ -187,11 +187,11 @@ public class MagicCircleDataLinks: MonoBehaviour
                 MonoBehaviour.print(convertedLinkedMethod.ToString());
 
                 setLinkedValueMethod.Invoke( fi.GetValue( destination ), myParams );
-                print(" The conversion succeeded ");
+                Debug.Log(" The conversion succeeded ");
             }
             catch( Exception e )
             {
-                print(" The conversion failed with exception " + e.ToString() );
+                Debug.LogWarning(" The conversion failed with exception " + e.ToString() );
             }
         }
     }
@@ -220,6 +220,20 @@ public class MagicCircleDataLinks: MonoBehaviour
             T convertedType = (T)Convert.ChangeType( mi.Invoke(source, null), typeof(T) );
             MonoBehaviour.print("Here is the converted value " + convertedType.ToString() );
             return convertedType;
+        }
+    }
+
+    public void UpdateSourceAndDestination()
+    {
+        oldSource = source;
+        oldDestination = destination;
+    }
+
+    void DrawLink()
+    {
+        if( source != null && destination != null )
+        {
+            Debug.DrawLine( source.transform.position, destination.transform.position, Color.green );
         }
     }
 }

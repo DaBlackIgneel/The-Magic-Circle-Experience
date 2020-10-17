@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MagicCircle : MonoBehaviour
+public class MagicCircle : SpellNode
 {
     [SerializeField]
     protected MagicCircleType mcType;
@@ -12,9 +12,6 @@ public class MagicCircle : MonoBehaviour
     public MagicCircle mcParent;
     public bool isActive;
     public Vector3 position;
-
-    [SerializeField]
-    private UserInputMagicCircle myUserInput;
 
     public MagicCircle(): base()
     {
@@ -30,11 +27,6 @@ public class MagicCircle : MonoBehaviour
     void Start()
     {
         mySpriteRenderer = GetComponent<SpriteRenderer>();
-        myUserInput = GetComponent<UserInputMagicCircle>();
-        if( myUserInput == null )
-        {
-            myUserInput = gameObject.AddComponent<UserInputMagicCircle>();
-        }
     }
 
     // Update is called once per frame
@@ -129,7 +121,7 @@ public class MagicCircle : MonoBehaviour
         return innerMagicCircleList.ContainsKey( checkType );
     }
 
-    public MagicCircleType GetMcType()
+    public override MagicCircleType GetMcType()
     {
         return mcType;
     }
@@ -186,5 +178,10 @@ public class MagicCircle : MonoBehaviour
                 currentNum ++;
             }
         }
+    }
+
+    public override bool IsMagicCircle()
+    {
+        return true;
     }
 }

@@ -6,10 +6,10 @@ public class FormMagicCircle : MagicCircle
 {
     [SerializeField]
     FormType myForm;
-    public LinkableData<ParticleMagic> formableMagic;
-    public ElementMagicCircle tempCircle;
+    public LinkableData<ParticleMagic> formableMagic  = new LinkableData<ParticleMagic>(null);
     public LinkableData<float> sizeMultiplier = new LinkableData<float>(1);
     public bool autoLinkToElementMagic = true;
+
     private MagicControllerTracker magicControllerTracker;
 
     public FormMagicCircle() : base()
@@ -24,17 +24,18 @@ public class FormMagicCircle : MagicCircle
         mcType = MagicCircleType.Form;
         mySpriteRenderer = GetComponent<SpriteRenderer>();
         mySpriteRenderer.color = Color.black;
-        if( autoLinkToElementMagic && mcParent.Contains( (int)MagicCircleType.Element ) )
+        if( autoLinkToElementMagic && spellParent.initialElement != null )
         {
-            ElementMagicCircle emc = mcParent.GetMagicCircle(  (int)MagicCircleType.Element ) as ElementMagicCircle;
-            formableMagic.SetLinkedValue( emc.GetMagic );
+            MagicCircleDataLinks link = (MagicCircleDataLinks) spellParent.AddLink( LinkTypes.Data );
+            link.source = spellParent.initialElement;
+            link.destination = this;
+            link.selectedProperty = "GetMagic";
+            link.selectedLinkableProperty = "formableMagic";
+            link.UpdateSourceAndDestination();
+            link.link = true;
+            spellParent.initialElement.autoActivate = false;
+            // formableMagic.SetLinkedValue( emc.GetMagic );
         }
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        DrawLink();
     }
 
     void FixedUpdate()
@@ -94,17 +95,5 @@ public class FormMagicCircle : MagicCircle
     public override int GetSubType()
     {
         return (int)myForm;
-    }
-
-    void DrawLink()
-    {
-        if( formableMagic.GetSource() != null )
-        {
-            MagicCircle source = (MagicCircle) formableMagic.GetSource();
-            if( source != null )
-            {
-                Debug.DrawLine( transform.position, source.transform.position, Color.green );
-            }
-        }
     }
 }

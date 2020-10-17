@@ -4,20 +4,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
-public enum PressType
-{
-    Press,
-    Hold,
-    Release,
-}
-
-public class UserInputMagicCircle : MagicCircle
+public class UserInputNode : SpellNode
 {
     public UnityEvent onPressedEvent;
     public UnityEvent onReleasedEvent;
 
     public string inputCharacter;
-    public PressType pressType;
     public float holdValue;
     public bool resetAfterHold = true;
     public bool isPressed = false;
@@ -75,6 +67,11 @@ public class UserInputMagicCircle : MagicCircle
         }
     }
 
+    public override MagicCircleType GetMcType()
+    {
+        return MagicCircleType.Input;
+    }
+
     public Vector3 GetMousePosition()
     {
         return Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -88,6 +85,11 @@ public class UserInputMagicCircle : MagicCircle
     public float PressedDuration()
     {
         return holdValue;
+    }
+
+    public string GetKeyString()
+    {
+        return GetKey().ToString();
     }
 
     KeyCode GetKey()
@@ -104,6 +106,10 @@ public class UserInputMagicCircle : MagicCircle
              || returnKey == "6" || returnKey == "7" || returnKey == "8" || returnKey == "9" || returnKey == "0" )
         {
             return (KeyCode) Enum.Parse( typeof(KeyCode), "Alpha" + returnKey, true );
+        }
+        else if( returnKey.Contains(" ") || returnKey.Contains("space") )
+        {
+            return KeyCode.Space;
         }
         else
         {

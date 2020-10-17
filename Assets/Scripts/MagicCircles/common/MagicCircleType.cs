@@ -80,4 +80,10 @@ public enum MathType
     END = 1
 }
 
+public enum LinkTypes
+{
+    Transition,
+    Data
+}
+
 public delegate void ActivationFunction();

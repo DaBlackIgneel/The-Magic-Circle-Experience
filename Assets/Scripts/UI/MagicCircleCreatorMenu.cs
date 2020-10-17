@@ -25,6 +25,7 @@ public class MagicCircleCreatorMenu : MonoBehaviour
     float emissionRate = 0;
     float force = 10;
     float sizeMultiplier = 1;
+    Spell spell;
 
     // Start is called before the first frame update
     void Start()
@@ -248,8 +249,19 @@ public class MagicCircleCreatorMenu : MonoBehaviour
         subTypeDropdown.RefreshShownValue();
     }
 
+    public void CreateSpell()
+    {
+        GameObject objSpell = new GameObject();
+        spell = (Spell) objSpell.AddComponent<Spell>();
+        spell.name = "New Generic Spell";
+    }
+
     public void OnCreateMC()
     {
+        if( spell == null )
+        {
+            CreateSpell();
+        }
         if( rootMagicCircle == null || !rootMagicCircle.Contains( (int)mcType ) )
         {
             if( mcType == MagicCircleType.None )
@@ -258,20 +270,22 @@ public class MagicCircleCreatorMenu : MonoBehaviour
             }
             OnEmissionRateChanged( value1Slider.value );
             Transform pos = rootMagicCircle == null ? defaultMagicCircle.transform : rootMagicCircle.transform;
-            GameObject newObj = Instantiate( defaultMagicCircle, pos ) as GameObject;
-            newObj.name = mcType.ToString() + " Magic Circle";
+            // GameObject newObj = Instantiate( defaultMagicCircle, pos ) as GameObject;
+            // newObj.name = mcType.ToString() + " Magic Circle";
+            SpellNode newNode = spell.AddNode( mcType );
+            newNode.name = mcType.ToString() + " Magic Circle";
             MagicCircle newMc;
             switch( mcType )
             {
                 case MagicCircleType.Element:
-                    ElementMagicCircle tempMC = newObj.AddComponent<ElementMagicCircle>() as ElementMagicCircle;
+                    ElementMagicCircle tempMC = newNode as ElementMagicCircle;
                     // tempMC.SetMcType( mcType );
                     tempMC.SetElement( (ElementType) subType );
                     tempMC.emissionRate.SetDefaultValue( emissionRate );
                     newMc = tempMC as MagicCircle;
                     break;
                 case MagicCircleType.Form:
-                    FormMagicCircle tempFormMC = newObj.AddComponent<FormMagicCircle>() as FormMagicCircle;
+                    FormMagicCircle tempFormMC = newNode as FormMagicCircle;
                     // tempMC.SetMcType( mcType );
                     // tempMC.SetElement( (ElementType) subType );
                     tempFormMC.SetForm( (FormType) subType );
@@ -279,7 +293,7 @@ public class MagicCircleCreatorMenu : MonoBehaviour
                     newMc = tempFormMC as MagicCircle;
                     break;
                 case MagicCircleType.Movement:
-                    MovementMagicCircle tempMovementMC = newObj.AddComponent<MovementMagicCircle>() as MovementMagicCircle;
+                    MovementMagicCircle tempMovementMC = newNode as MovementMagicCircle;
                     // tempMC.SetMcType( mcType );
                     // tempMC.SetElement( (ElementType) subType );
                     tempMovementMC.SetMovement( (MovementType) subType );
@@ -287,7 +301,7 @@ public class MagicCircleCreatorMenu : MonoBehaviour
                     newMc = tempMovementMC as MagicCircle;
                     break;
                 default:
-                    newMc = newObj.AddComponent<MagicCircle>() as MagicCircle;
+                    newMc = newNode as MagicCircle;
                     newMc.SetMcType( mcType );
                     break;
             }
@@ -297,7 +311,7 @@ public class MagicCircleCreatorMenu : MonoBehaviour
             }
             else
             {
-                rootMagicCircle.AddMagicCircle( newMc );
+                // rootMagicCircle.AddMagicCircle( newMc );
             }
             selectedMagicCircle = newMc;
         }
@@ -322,17 +336,25 @@ public class MagicCircleCreatorMenu : MonoBehaviour
 
     public void Activate()
     {
-        if( rootMagicCircle != null )
+        // if( rootMagicCircle != null )
+        // {
+        //     rootMagicCircle.Activate();
+        // }
+        if( spell != null )
         {
-            rootMagicCircle.Activate();
+            spell.Activate();
         }
     }
 
     public void Deactivate()
     {
-        if( rootMagicCircle != null )
+        // if( rootMagicCircle != null )
+        // {
+        //     rootMagicCircle.Deactivate();
+        // }
+        if( spell != null )
         {
-            rootMagicCircle.Deactivate();
+            spell.Deactivate();
         }
     }
 

@@ -485,7 +485,7 @@ public class ClipperTest : MonoBehaviour
             if( isTrigger )
             {
                 // If the particle is colliding with a trigger
-                if( collideWithTrigger )
+                if( collideWithTrigger && particleTriggerColliders.ContainsKey(gameObjectID) )
                 {
                     Vector3 point = new Vector3( particles.positions.x[i], particles.positions.y[i], particles.positions.z[i] );
                     int hit = 0;

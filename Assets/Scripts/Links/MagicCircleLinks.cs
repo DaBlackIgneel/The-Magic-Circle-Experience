@@ -4,15 +4,16 @@ using UnityEngine;
 
 public class MagicCircleLinks : MonoBehaviour
 {
-    public MagicCircle source;
-    public MagicCircle destination;
+    public SpellNode source;
+    public SpellNode destination;
+    public Spell spellParent;
 
-    public virtual void SetSource( MagicCircle newSource )
+    public virtual void SetSource( SpellNode newSource )
     {
         source = newSource;
     }
 
-    public virtual void SetDestination( MagicCircle newDestination )
+    public virtual void SetDestination( SpellNode newDestination )
     {
         destination = newDestination;
     }
