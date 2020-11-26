@@ -25,6 +25,7 @@ public class MagicCircleDataLinks: MagicCircleLinks
     public string selectedProperty;
     public string selectedLinkableProperty;
     public string selectedActivatableFunction;
+    private string previousLinkedProperty;
     public bool link;
     public bool invert;
 
@@ -64,31 +65,54 @@ public class MagicCircleDataLinks: MagicCircleLinks
         if( link )
         {
             link = false;
-            if( source != null && destination != null && selectedProperty != null )
+            if( source != null && destination != null )
             {
-                // Link properties
-                if( selectedLinkableProperty != null )
+                if( previousLinkedProperty != null && previousLinkedProperty != selectedLinkableProperty )
                 {
-                    Type[] conversionTypes = GetConversion();
-                    if( conversionTypes[0] != null )
-                    {
-                        PickConversionTypes( conversionTypes[0], conversionTypes[1] );
-                    }
-                    else
-                    {
-                        Debug.LogWarning("Failed to match one value with the destination or source");
-                    }
+                    ResetProperty( previousLinkedProperty );
                 }
-
-                // Link bool to activator function
-                if( selectedActivatableFunction != null )
+                if( selectedProperty != null )
                 {
-                    LinkActivatorFunction();
+                    // Link properties
+                    if( selectedLinkableProperty != null )
+                    {
+                        Type[] conversionTypes = GetConversion();
+                        if( conversionTypes[0] != null )
+                        {
+                            PickConversionTypes( conversionTypes[0], conversionTypes[1] );
+                        }
+                        else
+                        {
+                            Debug.LogWarning("Failed to match one value with the destination or source");
+                        }
+                    }
+                    // Link bool to activator function
+                    if( selectedActivatableFunction != null )
+                    {
+                        LinkActivatorFunction();
+                    }
                 }
             }
         }
 
         DrawLink();
+    }
+
+    public void ResetProperty( string property )
+    {
+        if( destination != null && property != null && property.Length > 1 )
+        {
+            var lastPropertyExistance = destination.GetType().GetField( property );
+            if( lastPropertyExistance != null )
+            {
+                var lastProperty = lastPropertyExistance.GetValue( destination );
+                var resetValueFunction = lastProperty.GetType().GetMethod( "Reset" );
+                if( resetValueFunction != null )
+                {
+                    resetValueFunction.Invoke( lastProperty, null );
+                }
+            }
+        }
     }
 
     // only links the activator method if the input is a boolean
@@ -176,17 +200,38 @@ public class MagicCircleDataLinks: MagicCircleLinks
 
                 MethodInfo setLinkedValueMethod = fi.FieldType.GetMethod("SetLinkedValue");
 
+                object makemeSource = source;
+                MethodInfo makemeMI = mi;
+                if( invert && originType == typeof(bool) )
+                {
+                    BoolFunctionInverter bfi = new BoolFunctionInverter( mi, source );
+                    makemeMI = bfi.GetType().GetMethod("InvertFunction");
+                    makemeSource = bfi;
+
+                    // Func<bool> invertedMethod = (() => !(bool) mi.Invoke( source, null ));
+                    // makemeMI = RuntimeReflectionExtensions.GetMethodInfo(invertedMethod);
+                    // makemeSource = this;
+                    print( mi.ToString() );
+                    print( makemeMI );
+                }
                 var d1 = typeof(DataLinkConverter<>);
                 Type[] typeArgs = { targetType };
                 var makeme = d1.MakeGenericType( typeArgs );
-                object o = Activator.CreateInstance( makeme, mi, source );
+                object o = Activator.CreateInstance( makeme, makemeMI, makemeSource );
                 var convertedLinkedMethod = Convert.ChangeType( Delegate.CreateDelegate( setLinkedValueMethod.GetParameters()[0].ParameterType, o, o.GetType().GetMethod("ConvertToType"), true ), setLinkedValueMethod.GetParameters()[0].ParameterType );
 
                 object[] myParams = new object[1];
                 myParams[0] = convertedLinkedMethod;
                 MonoBehaviour.print(convertedLinkedMethod.ToString());
 
-                setLinkedValueMethod.Invoke( fi.GetValue( destination ), myParams );
+                // if( fi.GetType() == typeof( bool ) && invert )
+                // {
+                //     setLinkedValueMethod.Invoke( !fi.GetValue( destination ), myParams );
+                // }
+                // else
+                // {
+                    setLinkedValueMethod.Invoke( fi.GetValue( destination ), myParams );
+                // }
                 Debug.Log(" The conversion succeeded ");
             }
             catch( Exception e )
@@ -196,14 +241,48 @@ public class MagicCircleDataLinks: MagicCircleLinks
         }
     }
 
+    public override void SetSource( SpellNode newSource )
+    {
+        if( newSource != oldSource )
+        {
+            selectedProperty = null;
+            boolLinkedFunction = null;
+            linkedActivatableFunction = null;
+
+            if( newSource != null )
+            {
+                availableProperties = new List<string>( LinkableFinder.FindLinkableFunctions( newSource ) );
+                oldSource = newSource;
+                source = newSource;
+            }
+        }
+    }
+
+    public override void SetDestination( SpellNode newDestination )
+    {
+        if( newDestination != oldDestination )
+        {
+            selectedLinkableProperty = null;
+            linkedActivatableFunction = null;
+
+            if( newDestination != null )
+            {
+                availableLinkableProperties = new List<string>( LinkableFinder.FindAllLinkableProperty(newDestination) );
+                activatableFunctions = new List<string>( LinkableFinder.FindLinkableFunctions(newDestination, true) );
+                oldDestination = newDestination;
+                destination = newDestination;
+            }
+        }
+    }
+
     void GameObjectConversions( Type targetType )
     {
-        print( "GameObject conversions" );
+        Debug.LogWarning( "GameObject conversions not implemented yet" );
     }
 
     void Vector3Conversions( Type targetType )
     {
-        print( "Vector3 conversions" );
+        Debug.LogWarning( "Vector3 conversions not implemented yet" );
     }
 
     public class DataLinkConverter<T>
@@ -218,8 +297,22 @@ public class MagicCircleDataLinks: MagicCircleLinks
         public T ConvertToType()
         {
             T convertedType = (T)Convert.ChangeType( mi.Invoke(source, null), typeof(T) );
-            MonoBehaviour.print("Here is the converted value " + convertedType.ToString() );
+            // MonoBehaviour.print("Here is the converted value " + convertedType.ToString() );
             return convertedType;
+        }
+    }
+    public class BoolFunctionInverter
+    {
+        MethodInfo mi;
+        object source;
+        public BoolFunctionInverter( MethodInfo newMi, object newSource )
+        {
+            mi = newMi;
+            source = newSource;
+        }
+        public bool InvertFunction()
+        {
+            return !(bool) mi.Invoke( source, null );
         }
     }
 
@@ -235,5 +328,10 @@ public class MagicCircleDataLinks: MagicCircleLinks
         {
             Debug.DrawLine( source.transform.position, destination.transform.position, Color.green );
         }
+    }
+
+    public override LinkTypes GetLinkType()
+    {
+        return LinkTypes.Data;
     }
 }

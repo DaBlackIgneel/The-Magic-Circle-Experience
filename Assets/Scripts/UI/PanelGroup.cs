@@ -35,4 +35,9 @@ public class PanelGroup : MonoBehaviour
         ShowPanels();
     }
 
+    public int GetPageIndex()
+    {
+        return panelIndex;
+    }
+
 }

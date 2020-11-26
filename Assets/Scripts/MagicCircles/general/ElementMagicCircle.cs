@@ -102,6 +102,7 @@ public class ElementMagicCircle : MagicCircle
         {
             currentMagic.Deactivate();
         }
+        print("emissionRate: " + emissionRate );
         magicParent = new GameObject(myElement.ToString() + " Magic Parent");
         magicParent.transform.position = transform.position;
         GameObject magic = Instantiate(MagicList.elementMagicList[myElement], magicParent.transform) as GameObject;
@@ -146,6 +147,11 @@ public class ElementMagicCircle : MagicCircle
     public void SetElement( ElementType element )
     {
         myElement = element;
+    }
+
+    public ElementType GetElement()
+    {
+        return myElement;
     }
 
     void UpdateElementColor()

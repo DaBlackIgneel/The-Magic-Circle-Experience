@@ -22,10 +22,15 @@ public class MagicCircleMakerMenu : MonoBehaviour
     public InputSpellNodeUiData inputData;
     [SerializeField]
     public LogicSpellNodeUiData logicData;
+    [SerializeField]
+    public TransitionLinkUiData transitionData;
+    [SerializeField]
+    public DataLinkUiData dataData;
 
     public RectTransform UiBoard;
     public RightClickMenu rcm;
     public GameObject uiSpellNodePrefab;
+    public GameObject uiLinkPrefab;
     public PanelGroup McDetailsPanel;
     public Text detailsText;
 
@@ -45,6 +50,8 @@ public class MagicCircleMakerMenu : MonoBehaviour
 
     SpellNode selectedSpellNode;
     UISpellNode selectedUISN;
+    UILineRender selectedLink;
+    ModifyableUITypes mostRecentlySelected;
     Spell currentSpell;
     Vector2 offset;
     bool drag;
@@ -52,6 +59,12 @@ public class MagicCircleMakerMenu : MonoBehaviour
     SelectionSpace selectedSpace;
     SelectionMode selectionMode;
     List<UISpellNode> uiSpellNodeList = new List<UISpellNode>();
+    List<UILineRender> uiLinkList = new List<UILineRender>();
+
+    void Start()
+    {
+        McDetailsPanel.SetPageIndex( 0 );
+    }
 
     void Update()
     {
@@ -67,7 +80,7 @@ public class MagicCircleMakerMenu : MonoBehaviour
                     SpellNode sn = obj.GetComponent<SpellNode>();
                     if( sn != null )
                     {
-                            drag = true;
+                            // drag = true;
                             selectionMode = SelectionMode.Drag;
                             dragableObj = sn.gameObject;
                             offset = (Vector2)(sn.transform.position - mousePoint);
@@ -81,7 +94,7 @@ public class MagicCircleMakerMenu : MonoBehaviour
 
             }
        }
-       if( selectedSpellNode == null )
+       if( selectedSpellNode == null && selectedLink == null )
        {
            UpdateDetailsPanel( 0 );
        }
@@ -112,10 +125,9 @@ public class MagicCircleMakerMenu : MonoBehaviour
        // }
 
        // Unselect something when you right click
-       if( Input.GetMouseButtonUp(1) )
+       if( Input.GetMouseButtonDown(1) && (selectedLink == null || (selectedLink != null && !selectedLink.isClicked)) )
        {
-           selectedSpellNode = null;
-           selectionMode = SelectionMode.None;
+           DeselectAll();
        }
 
        // Stop dragging when you release the mouse
@@ -123,7 +135,7 @@ public class MagicCircleMakerMenu : MonoBehaviour
        {
            if( selectionMode == SelectionMode.Drag )
            {
-               drag = false;
+               // drag = false;
                selectionMode = SelectionMode.None;
            }
        }
@@ -142,46 +154,107 @@ public class MagicCircleMakerMenu : MonoBehaviour
            }
            dragableObj.transform.position = new Vector3( mousePoint.x, mousePoint.y, dragableObj.transform.position.z ) + (Vector3)offset;
        }
+       else if( selectionMode == SelectionMode.TransitionLink || selectionMode == SelectionMode.DataLink )
+       {
+           selectedLink.SetPoint( selectedLink.points.Count - 1, Input.mousePosition );
+       }
+    }
+
+    public void DeselectAll()
+    {
+        selectedSpellNode = null;
+        selectedLink = null;
+        selectionMode = SelectionMode.None;
     }
 
     public void UpdateSelectedUISpellNode( UISpellNode uisn )
     {
         if( selectionMode == SelectionMode.None )
         {
-            drag = true;
+            // drag = true;
             selectionMode = SelectionMode.Drag;
             dragableObj = uisn.gameObject;
             offset = (Vector2)(uisn.transform.position - Input.mousePosition);
             selectedSpace = SelectionSpace.UI;
             UpdateSelectedSpellNode( uisn.linkedSpellNode );
+            mostRecentlySelected = ModifyableUITypes.Node;
         }
         else if( selectionMode == SelectionMode.DataLink || selectionMode == SelectionMode.TransitionLink )
         {
             Debug.Log("Creating Link with source " + selectedUISN.gameObject.name + " and destination " + uisn.gameObject.name);
             CreateLink( selectedUISN, uisn );
+            mostRecentlySelected = ModifyableUITypes.Link;
+        }
+    }
+
+    public void UpdateSelectedLink( UILineRender uilr )
+    {
+        if( selectionMode == SelectionMode.None )
+        {
+            mostRecentlySelected = ModifyableUITypes.Link;
+            print("Updating the selected link");
+            selectedLink = uilr;
+            UpdateDetailsPanel( ((int)MagicCircleType.END) + ((int)selectedLink.linkedLink.GetLinkType()) );
+            UpdateLinkText();
         }
     }
 
     public void UpdateSelectedSpellNode( SpellNode sn )
     {
-        UpdateDetailsPanel( (int)sn.GetMcType() );
         if( selectedSpellNode != sn)
         {
             selectedSpellNode = sn;
         }
+        UpdateDetailsPanel( (int)selectedSpellNode.GetMcType() );
     }
 
     void UpdateDetailsPanel( int index )
     {
-        McDetailsPanel.SetPageIndex( index );
-        int maxMagicCircleTypes = 7;
-        if( index < maxMagicCircleTypes )
+        if( McDetailsPanel.GetPageIndex() != index )
         {
+            McDetailsPanel.SetPageIndex( index );
+            Debug.Log("Setting Details Panel index to " + index );
+        }
+        if( index < (int)MagicCircleType.END )
+        {
+            if( index == 0 )
+                return;
+
             detailsText.text = ((MagicCircleType) index ).ToString() + " Details";
+            switch( (MagicCircleType) index)
+            {
+                case MagicCircleType.Element:
+                {
+                    OnElementalUILoad();
+                    break;
+                }
+                case MagicCircleType.Form:
+                {
+                    OnFormUILoad();
+                    break;
+                }
+                case MagicCircleType.Movement:
+                {
+                    OnMovementUILoad();
+                    break;
+                }
+                case MagicCircleType.Input:
+                {
+                    OnInputUILoad();
+                    break;
+                }
+                case MagicCircleType.Logic:
+                {
+                    OnLogicUILoad();
+                    break;
+                }
+                default:
+                    break;
+            }
         }
         else
         {
-            detailsText.text = ((LinkTypes) (index - maxMagicCircleTypes) ).ToString() + " Details";
+            detailsText.text = ((LinkTypes) (index - (int)MagicCircleType.END) ).ToString() + " Details";
         }
     }
 
@@ -193,6 +266,15 @@ public class MagicCircleMakerMenu : MonoBehaviour
             rcm.ActivateIndex( (int) ModifyableUITypes.Node );
         }
         selectedUISN = uisn;
+    }
+
+    public void UpdateRightClickMenuWithLink( UILineRender uiln )
+    {
+        if( uiln != null )
+        {
+            rcm.ActivateIndex( (int) ModifyableUITypes.Link );
+        }
+        selectedLink = uiln;
     }
 
     public void CreateLink( UISpellNode source, UISpellNode destination )
@@ -219,10 +301,16 @@ public class MagicCircleMakerMenu : MonoBehaviour
             Debug.LogWarning( "Can't Create this link type " + selectionMode);
             return;
         }
-        mcl.source = source.linkedSpellNode;
-        mcl.destination = destination.linkedSpellNode;
+        mcl.SetSource( source.linkedSpellNode );
+        mcl.SetDestination( destination.linkedSpellNode );
         selectionMode = SelectionMode.None;
-
+        selectedLink.linkedLink = mcl;
+        selectedLink.mcmm = this;
+        Vector3 offsetMe = Input.mousePosition - destination.transform.position;
+        print(offsetMe.ToString("F3"));
+        selectedLink.SetReference( selectedLink.points.Count-1, destination, offsetMe );
+        selectedLink.deleteOnNoSource = true;
+        UpdateSelectedLink( selectedLink );
     }
 
     public void CreateSpellNode( int mct )
@@ -258,6 +346,18 @@ public class MagicCircleMakerMenu : MonoBehaviour
         currentSpell.name = "New Generic Spell";
     }
 
+    public void DeleteSelected()
+    {
+        if( mostRecentlySelected == ModifyableUITypes.Node && selectedUISN != null )
+        {
+            selectedUISN.Delete();
+        }
+        else if( mostRecentlySelected == ModifyableUITypes.Link && selectedLink != null )
+        {
+            selectedLink.Delete();
+        }
+    }
+
     // public void RemoveSelectedUISpellNode()
     // {
     //     RemoveUISpellNode( selectedUISN );
@@ -286,11 +386,25 @@ public class MagicCircleMakerMenu : MonoBehaviour
             case LinkTypes.Transition:
             {
                 selectionMode = SelectionMode.TransitionLink;
+                GameObject obj = (GameObject) Instantiate( uiLinkPrefab, UiBoard );
+                UILineRender uiLine = obj.GetComponent<UILineRender>();
+                uiLine.points.Clear();
+                uiLine.AddReference( selectedUISN );
+                uiLine.AddPoint( Input.mousePosition );
+                uiLinkList.Add( uiLine );
+                selectedLink = uiLine;
                 break;
             }
             case LinkTypes.Data:
             {
                 selectionMode = SelectionMode.DataLink;
+                GameObject obj = (GameObject) Instantiate( uiLinkPrefab, UiBoard );
+                UILineRender uiLine = obj.GetComponent<UILineRender>();
+                uiLine.points.Clear();
+                uiLine.AddReference( selectedUISN );
+                uiLine.AddPoint( Input.mousePosition );
+                uiLinkList.Add( uiLine );
+                selectedLink = uiLine;
                 break;
             }
             default:
@@ -303,6 +417,18 @@ public class MagicCircleMakerMenu : MonoBehaviour
 
 
 #region ElementUiCallbacks
+    public void OnElementalUILoad()
+    {
+        ElementMagicCircle emc = (ElementMagicCircle) selectedSpellNode;
+        if( emc != null )
+        {
+            elementalData.SetEmissionRate( emc.emissionRate.Value() );
+            elementalData.SetElement( emc.GetElement() );
+            elementalData.autoActivate.isOn = emc.autoActivate;
+            elementalData.SetFluidState( emc.elementPhase );
+        }
+    }
+
     public void OnElementalChanged( int value )
     {
         ElementMagicCircle emc = (ElementMagicCircle) selectedSpellNode;
@@ -347,6 +473,21 @@ public class MagicCircleMakerMenu : MonoBehaviour
 #endregion
 
 #region FormUiCallbacks
+    public void OnFormUILoad()
+    {
+        // public UnityEngine.UI.Slider size;
+        // public UnityEngine.UI.InputField sizeInput;
+        // public UnityEngine.UI.Toggle autoLink;
+        // public Dropdown form;
+        FormMagicCircle fmc = (FormMagicCircle) selectedSpellNode;
+        if( fmc != null )
+        {
+            formData.SetSize( fmc.sizeMultiplier.Value() );
+            formData.autoLink.isOn = fmc.autoLinkToElementMagic;
+            formData.SetForm( fmc.GetForm() );
+        }
+    }
+
     public void OnFormChanged( int value )
     {
         FormMagicCircle fmc = (FormMagicCircle) selectedSpellNode;
@@ -382,6 +523,28 @@ public class MagicCircleMakerMenu : MonoBehaviour
 #endregion
 
 #region MovementUiCallbacks
+    public void OnMovementUILoad()
+    {
+        // public UnityEngine.UI.Slider initialVelocity;
+        // public UnityEngine.UI.InputField initialVelocityInput;
+        // public UnityEngine.UI.Slider force;
+        // public UnityEngine.UI.InputField forceInput;
+        // public UnityEngine.UI.Slider angle;
+        // public UnityEngine.UI.InputField angleInput;
+        // public UnityEngine.UI.Toggle autoLink;
+        // public UnityEngine.UI.Toggle dragMagic;
+        // public Dropdown movement;
+        MovementMagicCircle mmc = (MovementMagicCircle) selectedSpellNode;
+        if( mmc != null )
+        {
+            movementData.SetInitialVelocity( mmc.initialVelocity.Value() );
+            movementData.SetForce( mmc.force.Value() );
+            movementData.SetAngle( mmc.directionAngle.Value() );
+            movementData.SetMovement( mmc.GetMovement() );
+            movementData.autoLink.isOn = mmc.autoLinkToElementMagic;
+            movementData.dragMagic.isOn = mmc.dragMagic;
+        }
+    }
     public void OnMovementChanged( int value )
     {
         MovementMagicCircle mmc = (MovementMagicCircle) selectedSpellNode;
@@ -456,6 +619,14 @@ public class MagicCircleMakerMenu : MonoBehaviour
 #endregion
 
 #region UserInputUiCallbacks
+    public void OnInputUILoad()
+    {
+        UserInputNode uin = (UserInputNode) selectedSpellNode;
+        if( uin != null )
+        {
+            inputData.inputCharacter.text = uin.GetKeyString() ?? null;
+        }
+    }
     public void OnInputEndEdit( string value )
     {
         UserInputNode uin = (UserInputNode) selectedSpellNode;
@@ -468,6 +639,29 @@ public class MagicCircleMakerMenu : MonoBehaviour
 #endregion
 
 #region LogicUiCallbacks
+    public void OnLogicUILoad()
+    {
+        LogicNode ln = (LogicNode) selectedSpellNode;
+        if( ln != null )
+        {
+            logicData.logicDataType.value = (int)ln.inputDataType;
+            logicData.logicDataType.RefreshShownValue();
+            logicData.logicCompareType.value = (int)ln.compareType;
+            logicData.logicCompareType.RefreshShownValue();
+            if( ln.inputDataType == InputDataType.Vector )
+            {
+                logicData.logicLeftHandInput1.text = ((Vector2)ln.leftHandValue.Value()) != null ? ((Vector2)ln.leftHandValue.Value()).x.ToString() : null;
+                logicData.logicLeftHandInput2.text = ((Vector2)ln.leftHandValue.Value()) != null ? ((Vector2)ln.leftHandValue.Value()).x.ToString() : null;
+                logicData.logicRightHandInput1.text = ((Vector2)ln.rightHandValue.Value()) != null ? ((Vector2)ln.rightHandValue.Value()).y.ToString() : null;
+                logicData.logicRightHandInput2.text = ((Vector2)ln.rightHandValue.Value()) != null ? ((Vector2)ln.rightHandValue.Value()).y.ToString() : null;
+            }
+            else
+            {
+                logicData.logicLeftHandInput1.text = ln.leftHandValue.Value() != null ? ln.leftHandValue.Value().ToString() : null;
+                logicData.logicRightHandInput1.text = ln.rightHandValue.Value() != null ? ln.rightHandValue.Value().ToString() : null;
+            }
+        }
+    }
     public void OnLogicLeft1EndEdit( string value )
     {
         LogicNode ln = (LogicNode) selectedSpellNode;
@@ -588,6 +782,11 @@ public class MagicCircleMakerMenu : MonoBehaviour
     {
         logicData.logicLeftHandInput2.gameObject.SetActive( logicData.GetLogicDataType() == InputDataType.Vector );
         logicData.logicRightHandInput2.gameObject.SetActive( logicData.GetLogicDataType() == InputDataType.Vector );
+        LogicNode ln = (LogicNode) selectedSpellNode;
+        if( ln != null )
+        {
+            ln.inputDataType = (InputDataType)( value );
+        }
     }
 
     public void OnLogicCompareTypeChanged(int value)
@@ -599,6 +798,221 @@ public class MagicCircleMakerMenu : MonoBehaviour
         }
     }
 #endregion
+
+#region TransitionLinkCallbacks
+    public void OnTransitionDelayChange( float value )
+    {
+        transitionData.OnDelayChanged();
+        MagicCircleTransitionLinks tl = (MagicCircleTransitionLinks) selectedLink.linkedLink;
+        if( tl != null )
+        {
+            tl.delayTime = transitionData.GetDelay();
+        }
+    }
+
+    public void OnTransitionDelayEndEdit( string value )
+    {
+        transitionData.SetDelay( float.Parse( value ) );
+    }
+
+    public void UpdateLinkText()
+    {
+        if( selectedLink.linkedLink.GetLinkType() == LinkTypes.Transition )
+        {
+            transitionData.sourceLabel.text = selectedLink.linkedLink.source.gameObject.name;
+            transitionData.destinationLabel.text = selectedLink.linkedLink.destination.gameObject.name;
+        }
+        else
+        {
+            dataData.sourceLabel.text = selectedLink.linkedLink.source.gameObject.name;
+            dataData.destinationLabel.text = selectedLink.linkedLink.destination.gameObject.name;
+            UpdateDataInverseToggle();
+            UpdateDataSourceProperties();
+            UpdateDataDestinationProperties();
+        }
+    }
+
+    public void OnSwapSourceDestination()
+    {
+        SpellNode tempSource = selectedLink.linkedLink.source;
+        selectedLink.linkedLink.SetSource( selectedLink.linkedLink.destination );
+        selectedLink.linkedLink.SetDestination( tempSource );
+        UpdateLinkText();
+    }
+#endregion
+
+#region DataLinkCallbacks
+    public void OnDataSourcePropertyChanged( int value )
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            if( value > 0 && value <= dl.availableProperties.Count )
+            {
+                dl.selectedProperty = dl.availableProperties[value-1];
+            }
+            dl.link = true;
+        }
+    }
+
+    public void UpdateDataSourceProperties()
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            dataData.sourceProperty.ClearOptions();
+            List<string> temp = new List<string>();
+            temp.Add("----");
+            temp.AddRange( dl.availableProperties );
+            dataData.sourceProperty.AddOptions( temp );
+            dataData.sourceProperty.value = (int)( Mathf.Max( dl.availableProperties.FindIndex( x => x == dl.selectedProperty ) + 1, 0 ) );
+            dataData.sourceProperty.RefreshShownValue();
+        }
+    }
+
+    public void OnDataInverseChanged( bool value )
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            dl.invert = value;
+        }
+    }
+
+    public void UpdateDataInverseToggle()
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            dataData.inverseToggle.isOn = dl.invert;
+        }
+    }
+
+    public void OnDataDestinationPropertyChanged( int value )
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            if( dataData.usePropertyToggle.isOn )
+            {
+                if( value > 0 && value <= dl.availableLinkableProperties.Count  )
+                {
+                    dl.selectedLinkableProperty = dl.availableLinkableProperties[value-1];
+                    dl.selectedActivatableFunction = "";
+                }
+            }
+            else if( dataData.useFunctionToggle.isOn )
+            {
+                if( value > 0 && value <= dl.activatableFunctions.Count )
+                {
+                    dl.selectedLinkableProperty = "";
+                    dl.selectedActivatableFunction = dl.activatableFunctions[value-1];
+                }
+            }
+            dl.link = true;
+        }
+    }
+
+    public void UpdateDataDestinationProperties()
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            dataData.destinationProperty.ClearOptions();
+            if( selectedLink.isProperty )
+            {
+                dataData.usePropertyToggle.isOn = true;
+            }
+            else
+            {
+                dataData.useFunctionToggle.isOn = true;
+            }
+            OnDataUsePropertyChanged( dataData.usePropertyToggle.isOn );
+            OnDataUseFunctionChanged( dataData.useFunctionToggle.isOn );
+        }
+    }
+
+    public void OnDataUsePropertyChanged( bool value)
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            if( value )
+            {
+                dataData.destinationProperty.ClearOptions();
+                List<string> temp = new List<string>();
+                temp.Add("----");
+                temp.AddRange( dl.availableLinkableProperties );
+                dataData.destinationProperty.AddOptions( temp );
+                dataData.destinationProperty.value = (int)( Mathf.Max( dl.availableLinkableProperties.FindIndex( x => x == dl.selectedLinkableProperty ) + 1, 0 ) );
+                dataData.destinationProperty.RefreshShownValue();
+                selectedLink.isProperty = true;
+                OnDataDestinationPropertyChanged( dataData.destinationProperty.value );
+            }
+        }
+    }
+
+    public void OnDataUseFunctionChanged( bool value)
+    {
+        MagicCircleDataLinks dl = (MagicCircleDataLinks) selectedLink.linkedLink;
+        if( dl != null )
+        {
+            if( value )
+            {
+                dataData.destinationProperty.ClearOptions();
+                List<string> temp = new List<string>();
+                temp.Add("----");
+                temp.AddRange( dl.activatableFunctions );
+                dataData.destinationProperty.AddOptions( temp );
+                dataData.destinationProperty.value = (int)( Mathf.Max( dl.activatableFunctions.FindIndex( x => x == dl.selectedActivatableFunction ) + 1, 0 ) );
+                dataData.destinationProperty.RefreshShownValue();
+                selectedLink.isProperty = false;
+                OnDataDestinationPropertyChanged( dataData.destinationProperty.value );
+            }
+        }
+    }
+#endregion
+
+}
+
+[Serializable]
+public class DataLinkUiData
+{
+    public UnityEngine.UI.Button swapSourceDestination;
+    public UnityEngine.UI.Text sourceLabel;
+    public UnityEngine.UI.Text destinationLabel;
+    public UnityEngine.UI.Toggle usePropertyToggle;
+    public UnityEngine.UI.Toggle useFunctionToggle;
+    public UnityEngine.UI.Toggle inverseToggle;
+    public Dropdown sourceProperty;
+    public Dropdown destinationProperty;
+
+}
+
+[Serializable]
+public class TransitionLinkUiData
+{
+    public UnityEngine.UI.Slider delay;
+    public UnityEngine.UI.InputField delayInput;
+    public UnityEngine.UI.Button swapSourceDestination;
+    public UnityEngine.UI.Text sourceLabel;
+    public UnityEngine.UI.Text destinationLabel;
+
+    public void SetDelay( float value )
+    {
+        delay.value = value < delay.maxValue ? value : delay.maxValue;
+        delay.value = delay.value > delay.minValue ? delay.value : delay.minValue;
+    }
+
+    public float GetDelay()
+    {
+        return delay.value;
+    }
+
+    public void OnDelayChanged()
+    {
+        delayInput.text = delay.value.ToString("F2");
+    }
 
 }
 

@@ -8,10 +8,10 @@ public enum MagicCircleType
     Element = 1,
     Form = 2,
     Movement = 3,
-    END = 3,
     Input = 4,
     Logic = 5,
     Math = 6,
+    END = 7
 }
 
 public enum ElementType

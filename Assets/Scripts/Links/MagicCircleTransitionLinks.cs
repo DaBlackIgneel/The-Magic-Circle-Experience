@@ -71,4 +71,9 @@ public class MagicCircleTransitionLinks : MagicCircleLinks
             Debug.DrawLine( source.transform.position - Vector3.up * .25f, destination.transform.position - Vector3.up * .25f, Color.red );
         }
     }
+
+    public override LinkTypes GetLinkType()
+    {
+        return LinkTypes.Transition;
+    }
 }

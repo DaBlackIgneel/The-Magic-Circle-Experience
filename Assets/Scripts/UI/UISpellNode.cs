@@ -92,4 +92,15 @@ public class UISpellNode : MonoBehaviour, IPointerDownHandler
             }
         }
     }
+
+    public void Delete()
+    {
+        if( linkedSpellNode.IsMagicCircle() )
+        {
+            MagicCircle mc = (MagicCircle) linkedSpellNode;
+            mc.Deactivate();
+        }
+        Destroy( linkedSpellNode.gameObject );
+        Destroy( this.gameObject );
+    }
 }

@@ -51,6 +51,7 @@ public class LinkableData<T>
     {
         linkedValue = null;
         linkedObject = null;
+        Debug.LogWarning(" I AM RESETING THE VALUES ");
     }
 
     public virtual object GetSource()
@@ -63,5 +64,11 @@ public class LinkableData<T>
         {
             return null;
         }
+    }
+
+    public override string ToString()
+    {
+        string toString = "Type: " + this.GetType().ToString() + "\n defaultValue:" + defaultValue.ToString() + "Value: " + Value().ToString() + "linkedValue: " + linkedValue;
+        return toString;
     }
 }

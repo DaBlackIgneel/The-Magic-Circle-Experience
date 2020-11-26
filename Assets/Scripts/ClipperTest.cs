@@ -502,7 +502,7 @@ public class ClipperTest : MonoBehaviour
                         // Check to see if the particle is colliding with the trigger
                         for( int pathsIndex = 0; pathsIndex < particleTriggerColliders[gameObjectID].path.Count; pathsIndex++ )
                         {
-                            hit = Clipper.PointInPolygon( new IntPoint( point.x * clipperPrecision, point.y * clipperPrecision ) , particleTriggerColliders[gameObjectID].path[0] );
+                            hit = Clipper.PointInPolygon( new IntPoint( point.x * clipperPrecision, point.y * clipperPrecision ) , particleTriggerColliders[gameObjectID].path[pathsIndex] );
                             if( hit != 0 )
                             break;
                         }

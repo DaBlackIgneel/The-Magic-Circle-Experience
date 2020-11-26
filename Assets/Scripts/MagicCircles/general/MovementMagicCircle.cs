@@ -235,10 +235,12 @@ public class MovementMagicCircle : MagicCircle
                     break;
                 }
                 // TODO: add ability to compress when stopped
+                // Currently it's just changing the shape of the form
                 case MovementType.Stop:
                 {
-                    relativePositionOffset = movableMagic.Value().transform.position - transform.position;
+                    // relativePositionOffset = movableMagic.Value().transform.position - transform.position;
                     Debug.Log("Stopping Movement");
+                    goto case MovementType.Pour;
                     break;
                 }
                 default:
@@ -266,6 +268,11 @@ public class MovementMagicCircle : MagicCircle
     public void SetMovement( MovementType movement )
     {
         myMovement = movement;
+    }
+
+    public MovementType GetMovement()
+    {
+        return myMovement;
     }
 
     public override int GetSubType()

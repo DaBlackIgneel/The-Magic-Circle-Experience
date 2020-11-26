@@ -92,6 +92,11 @@ public class FormMagicCircle : MagicCircle
         myForm = form;
     }
 
+    public FormType GetForm()
+    {
+        return myForm;
+    }
+
     public override int GetSubType()
     {
         return (int)myForm;

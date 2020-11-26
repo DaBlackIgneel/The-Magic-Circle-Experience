@@ -17,4 +17,9 @@ public class MagicCircleLinks : MonoBehaviour
     {
         destination = newDestination;
     }
+
+    public virtual LinkTypes GetLinkType()
+    {
+        return LinkTypes.Transition;
+    }
 }

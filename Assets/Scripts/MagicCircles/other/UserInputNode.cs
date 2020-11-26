@@ -26,22 +26,23 @@ public class UserInputNode : SpellNode
 
     void Update()
     {
-        if( inputCharacter != null && inputCharacter.Length > 0 )
+        if( inputCharacter != null && inputCharacter.Length > 0 && GetKey() != null )
         {
-            if( Input.GetKeyDown( GetKey() ) )
+            KeyCode currentKey = GetKey() ?? KeyCode.Space;
+            if( Input.GetKeyDown( currentKey ) )
             {
                 if( !isPressed )
                 {
-                    Debug.Log("Key: " + GetKey().ToString() + " was pressed");
+                    Debug.Log("Key: " + currentKey.ToString() + " was pressed");
                     onPressedEvent.Invoke();
                 }
                 isPressed = true;
             }
-            else if( Input.GetKeyUp( GetKey() ) )
+            else if( Input.GetKeyUp( currentKey ) )
             {
                 if( isPressed )
                 {
-                    Debug.Log("Key: " + GetKey().ToString() + " was released");
+                    Debug.Log("Key: " + currentKey.ToString() + " was released");
                     onReleasedEvent.Invoke();
                 }
                 isPressed = false;
@@ -89,11 +90,14 @@ public class UserInputNode : SpellNode
 
     public string GetKeyString()
     {
-        return GetKey().ToString();
+        return inputCharacter != null ? GetKey().ToString() : null;
     }
 
-    KeyCode GetKey()
+    KeyCode? GetKey()
     {
+        if( inputCharacter == null )
+            return null;
+
         string returnKey = inputCharacter.ToLower();
         if( returnKey == "tab" || returnKey == "enter" || returnKey == "ctrl"
             || returnKey == "f1" || returnKey == "f2" || returnKey == "f3" || returnKey == "f4" || returnKey == "f5"
