@@ -94,4 +94,9 @@ public class ExpandOnHighlight : MonoBehaviour, IPointerEnterHandler, IPointerEx
     {
         return highlighted;
     }
+
+    void OnDisable()
+    {
+        highlighted = false;
+    }
 }

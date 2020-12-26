@@ -55,7 +55,7 @@ public class MovementMagicCircle : MagicCircle
             link.selectedLinkableProperty = "movableMagic";
             link.UpdateSourceAndDestination();
             link.link = true;
-            spellParent.initialElement.autoActivate = false;
+            // spellParent.initialElement.autoActivate = false;
             // formableMagic.SetLinkedValue( emc.GetMagic );
         }
     }
@@ -104,7 +104,7 @@ public class MovementMagicCircle : MagicCircle
                     }
                     // If the magic is stopped or pouring, and you want to drag the magic around,
                     // then make sure the magic follows you
-                    else if( dragMagic && ( myMovement == MovementType.Stop || myMovement == MovementType.Pour ) && parentMagicControllerTracker.IsCurrentMoveController( this ) )
+                    else if( dragMagic && ( myMovement == MovementType.Stop /*|| myMovement == MovementType.Pour*/ || myMovement == MovementType.Push ) && parentMagicControllerTracker.IsCurrentMoveController( this ) )
                     {
                         pm.transform.parent.position = Vector3.Lerp(pm.transform.parent.position, transform.position + relativePositionOffset, .25f );
                     }
@@ -189,14 +189,31 @@ public class MovementMagicCircle : MagicCircle
             {
                 case MovementType.Push:
                 {
-                    Debug.Log("Pushing Movement");
-                    if( (movableRb = movableMagic.Value().GetComponent<Rigidbody2D>()) == null )
+                    if( pm != null )
                     {
-                        movableRb = movableMagic.Value().AddComponent<Rigidbody2D>();
+                        Debug.Log("Pouring/pushing Movement");
+                        relativePositionOffset = movableMagic.Value().transform.position - transform.position;
+                        if( dragMagic && movableMagic.Value().GetComponent<ParticleMagic>() != null )
+                        {
+                            parentMagicControllerTracker = movableMagic.Value().transform.parent.gameObject.GetComponent<MagicControllerTracker>();
+                            if( parentMagicControllerTracker == null )
+                            {
+                                parentMagicControllerTracker = movableMagic.Value().transform.parent.gameObject.AddComponent<MagicControllerTracker>();
+                            }
+                            parentMagicControllerTracker.SetCurrentMovementController( this );
+                        }
                     }
-                    movableRb.gravityScale = 0;
-                    direction.SetDefaultValue( transform.right );
-                    movableRb.AddForce( (Vector2) (initialVelocity.Value() * direction.Value().normalized), ForceMode2D.Impulse );
+                    else
+                    {
+                        Debug.Log("Pushing Movement");
+                        if( (movableRb = movableMagic.Value().GetComponent<Rigidbody2D>()) == null )
+                        {
+                            movableRb = movableMagic.Value().AddComponent<Rigidbody2D>();
+                        }
+                        movableRb.gravityScale = 0;
+                        direction.SetDefaultValue( transform.right );
+                        movableRb.AddForce( (Vector2) (initialVelocity.Value() * direction.Value().normalized), ForceMode2D.Impulse );
+                    }
                     break;
                 }
                 case MovementType.Control:
@@ -219,28 +236,28 @@ public class MovementMagicCircle : MagicCircle
                     movableRb.gravityScale = 0;
                     break;
                 }
-                case MovementType.Pour:
-                {
-                    relativePositionOffset = movableMagic.Value().transform.position - transform.position;
-                    if( dragMagic && movableMagic.Value().GetComponent<ParticleMagic>() != null )
-                    {
-                        parentMagicControllerTracker = movableMagic.Value().transform.parent.gameObject.GetComponent<MagicControllerTracker>();
-                        if( parentMagicControllerTracker == null )
-                        {
-                            parentMagicControllerTracker = movableMagic.Value().transform.parent.gameObject.AddComponent<MagicControllerTracker>();
-                        }
-                        parentMagicControllerTracker.SetCurrentMovementController( this );
-                    }
-                    Debug.Log("Pouring Movement");
-                    break;
-                }
+                // case MovementType.Pour:
+                // {
+                //     relativePositionOffset = movableMagic.Value().transform.position - transform.position;
+                //     if( dragMagic && movableMagic.Value().GetComponent<ParticleMagic>() != null )
+                //     {
+                //         parentMagicControllerTracker = movableMagic.Value().transform.parent.gameObject.GetComponent<MagicControllerTracker>();
+                //         if( parentMagicControllerTracker == null )
+                //         {
+                //             parentMagicControllerTracker = movableMagic.Value().transform.parent.gameObject.AddComponent<MagicControllerTracker>();
+                //         }
+                //         parentMagicControllerTracker.SetCurrentMovementController( this );
+                //     }
+                //     Debug.Log("Pouring Movement");
+                //     break;
+                // }
                 // TODO: add ability to compress when stopped
                 // Currently it's just changing the shape of the form
                 case MovementType.Stop:
                 {
                     // relativePositionOffset = movableMagic.Value().transform.position - transform.position;
                     Debug.Log("Stopping Movement");
-                    goto case MovementType.Pour;
+                    goto case MovementType.Push;
                     break;
                 }
                 default:

@@ -20,6 +20,13 @@ public class RightClickMenu : MonoBehaviour, IPointerDownHandler
     public int activationIndex;
     RectTransform rightClickMenuTransform;
     Vector3 rightClickedPoint;
+    MagicCircleMakerMenu mcmm;
+    RectTransform myRectTransform;
+
+    void Start()
+    {
+        myRectTransform = (RectTransform) transform;
+    }
 
     void Update()
     {
@@ -41,7 +48,9 @@ public class RightClickMenu : MonoBehaviour, IPointerDownHandler
                 DisableActivationList();
             }
         }
-        if( Input.GetMouseButtonDown(1) )
+        // width = rectTransform.rect.width;
+        // height = rectTransform.rect.height;
+        if( Input.GetMouseButtonDown(1) && myRectTransform.rect.Contains( Input.mousePosition - transform.position ) )
         {
             if( rightClickMenu != null )
             {
@@ -81,6 +90,7 @@ public class RightClickMenu : MonoBehaviour, IPointerDownHandler
 
     void DisableActivationList()
     {
+        print(" disabling activation list on RIGHT CLICK MENU");
         foreach( ActivatableObjects ao in activationList )
         {
             foreach( GameObject obj in ao.objs )
@@ -94,4 +104,9 @@ public class RightClickMenu : MonoBehaviour, IPointerDownHandler
     {
         return rightClickedPoint;
     }
+
+    // public void SetMcmm( MagicCircleMakerMenu newMcmm )
+    // {
+    //     mcmm = newMcmm;
+    // }
 }

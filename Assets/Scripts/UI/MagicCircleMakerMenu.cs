@@ -73,6 +73,8 @@ public class MagicCircleMakerMenu : MonoBehaviour
             // if left click is pressed...
             if( selectionMode == SelectionMode.None )
             {
+                // Checking if a spell node in the game world is clicked.  This is
+                // to allow the user to drag the spell node around in user space
                 Vector3 mousePoint = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 Collider2D obj =  Physics2D.OverlapPoint( (Vector2) mousePoint );
                 if( obj != null )
@@ -162,6 +164,10 @@ public class MagicCircleMakerMenu : MonoBehaviour
 
     public void DeselectAll()
     {
+        if( selectionMode == SelectionMode.TransitionLink || selectionMode == SelectionMode.DataLink )
+        {
+            selectedLink.deleteOnNoSource = true;
+        }
         selectedSpellNode = null;
         selectedLink = null;
         selectionMode = SelectionMode.None;

@@ -23,7 +23,7 @@ public class ParticleMagic : MonoBehaviour
     KeepSolidShapeJob keepSolidShapeJob = new KeepSolidShapeJob();
 
     bool destroyWhenDead = false;
-    MovementType psMovementType = MovementType.Pour;
+    MovementType psMovementType = MovementType.Push;
     ParticleSystem.MinMaxCurve noisyNoise;
     float quietNoise = 0.2f;
     bool noiseStartEnabled = true;
@@ -451,7 +451,11 @@ public class ParticleMagic : MonoBehaviour
         Debug.Log("Setting particle magic shape to " + movement.ToString());
         switch( psMovementType )
         {
-            case MovementType.Pour:
+            // case MovementType.Pour:
+            // {
+            //     goto case MovementType.Push;
+            // }
+            case MovementType.Push:
             {
                 var psVol = ps.velocityOverLifetime;
                 psVol.enabled = false;
@@ -465,7 +469,6 @@ public class ParticleMagic : MonoBehaviour
                 var psNoise = ps.noise;
                 psNoise.enabled = noiseStartEnabled;
                 psNoise.strength = noisyNoise;
-                Debug.Log("Noise is :" + noiseStartEnabled );
 
                 var psMain = ps.main;
                 psMain.simulationSpace = ParticleSystemSimulationSpace.World;
@@ -544,7 +547,7 @@ public class ParticleMagic : MonoBehaviour
             shapeJob.SetParticleSystem(ps);
 
             // Make the particle keep the shape of the particle system if it was set to stop
-            if( psMovementType == MovementType.Stop || psMovementType == MovementType.Push )
+            if( psMovementType == MovementType.Stop )
             {
                 shapeJob.FollowStartPosition( true, force );
                 shapeJob.maxDistanceTillTp = 10f;

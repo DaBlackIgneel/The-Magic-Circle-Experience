@@ -51,7 +51,7 @@ public class UILineRender : Graphic//, IPointerDownHandler
                 }
             }
         }
-        if( Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) )
+        if( linkedLink != null && ( Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) ) )
         {
             int isClickedInt = 0;
             for(int i = 0; i < myMesh.Count; i++ )
@@ -85,7 +85,7 @@ public class UILineRender : Graphic//, IPointerDownHandler
         }
         if( deleteOnNoSource )
         {
-            if( linkedLink.source == null || linkedLink.destination == null )
+            if( linkedLink == null || linkedLink.source == null || linkedLink.destination == null )
             {
                 Delete();
             }

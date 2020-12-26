@@ -46,9 +46,9 @@ public enum MovementType
     Push = 0,
     Path = 1,
     Control = 2,
-    Pour = 3,
-    Stop = 4,
-    END = 4
+    // Pour = 3,
+    Stop = 3,
+    END = 3
 }
 
 public enum InputType
