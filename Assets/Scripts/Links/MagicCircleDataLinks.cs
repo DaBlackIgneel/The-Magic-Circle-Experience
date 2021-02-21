@@ -320,6 +320,17 @@ public class MagicCircleDataLinks: MagicCircleLinks
     {
         oldSource = source;
         oldDestination = destination;
+
+        if( source != null )
+        {
+            availableProperties = new List<string>( LinkableFinder.FindLinkableFunctions(source) );
+        }
+
+        if( destination != null )
+        {
+            availableLinkableProperties = new List<string>( LinkableFinder.FindAllLinkableProperty(destination) );
+            activatableFunctions = new List<string>( LinkableFinder.FindLinkableFunctions(destination, true) );
+        }
     }
 
     void DrawLink()

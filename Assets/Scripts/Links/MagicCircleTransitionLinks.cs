@@ -2,6 +2,25 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+enum PendingOperation
+{
+    None,
+    Activate,
+    Deactivate
+}
+
+class PendingOperationContainer
+{
+    public PendingOperation pendingOp;
+    public float timeTillOp;
+
+    public PendingOperationContainer( PendingOperation po, float time )
+    {
+        pendingOp = po;
+        timeTillOp = time;
+    }
+}
+
 public class MagicCircleTransitionLinks : MagicCircleLinks
 {
     // These are declared in the parent class
@@ -11,14 +30,8 @@ public class MagicCircleTransitionLinks : MagicCircleLinks
     private float timeTillActivate = 0;
     bool wasActivated;
 
-    enum PendingOperation
-    {
-        None,
-        Activate,
-        Deactivate
-    }
-
     PendingOperation pendingOperation = PendingOperation.None;
+    List<PendingOperationContainer> pendingOpList = new List<PendingOperationContainer>();
 
     void FixedUpdate()
     {
@@ -29,28 +42,58 @@ public class MagicCircleTransitionLinks : MagicCircleLinks
             if( mcSource.isActive != wasActivated )
             {
                 wasActivated = mcSource.isActive;
-                timeTillActivate = delayTime;
-                pendingOperation = mcSource.isActive ? PendingOperation.Activate : PendingOperation.Deactivate;
+                PendingOperation operation = mcSource.isActive ? PendingOperation.Activate : PendingOperation.Deactivate;
+                pendingOpList.Add( new PendingOperationContainer( operation, delayTime ) );
+                // timeTillActivate = delayTime;
+                // pendingOperation = mcSource.isActive ? PendingOperation.Activate : PendingOperation.Deactivate;
             }
             // Timer to count down until you activate the magic circle
-            if( timeTillActivate <= 0 )
+            List<int> removePoc = new List<int>();
+            for( int i = 0; i < pendingOpList.Count; i++ )
             {
-                // Only Activate the magic if it hasn't already been activated
-                if( !mcDestination.isActive && pendingOperation == PendingOperation.Activate )
+                if( pendingOpList[i].timeTillOp <= 0 )
                 {
-                    mcDestination.Activate();
+                    // Activate the magic
+                    if( pendingOpList[i].pendingOp == PendingOperation.Activate )
+                    {
+                        mcDestination.Activate();
+                    }
+                    // Only Deactivate the magic if it hasn't already been deactivated
+                    else if( mcDestination.isActive &&  pendingOpList[i].pendingOp == PendingOperation.Deactivate )
+                    {
+                        mcDestination.Deactivate();
+                    }
+                    removePoc.Add(i);
                 }
-                // Only Deactivate the magic if it hasn't already been activated
-                else if( mcDestination.isActive &&  pendingOperation == PendingOperation.Deactivate )
+                // Keep decreasing the time until it reaches 0;
+                else
                 {
-                    mcDestination.Deactivate();
+                    pendingOpList[i].timeTillOp -= Time.fixedDeltaTime;
                 }
             }
-            // Keep decreasing the time until it reaches 0;
-            else
+            for( int i = removePoc.Count -1; i >= 0; i-- )
             {
-                timeTillActivate -= Time.fixedDeltaTime;
+                pendingOpList.RemoveAt(i);
             }
+
+            // if( timeTillActivate <= 0 )
+            // {
+            //     // Only Activate the magic if it hasn't already been activated
+            //     if( !mcDestination.isActive && pendingOperation == PendingOperation.Activate )
+            //     {
+            //         mcDestination.Activate();
+            //     }
+            //     // Only Deactivate the magic if it hasn't already been activated
+            //     else if( mcDestination.isActive &&  pendingOperation == PendingOperation.Deactivate )
+            //     {
+            //         mcDestination.Deactivate();
+            //     }
+            // }
+            // // Keep decreasing the time until it reaches 0;
+            // else
+            // {
+            //     timeTillActivate -= Time.fixedDeltaTime;
+            // }
         }
         else
         {

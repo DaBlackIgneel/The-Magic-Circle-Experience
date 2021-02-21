@@ -9,6 +9,7 @@ public class FormMagicCircle : MagicCircle
     public LinkableData<ParticleMagic> formableMagic  = new LinkableData<ParticleMagic>(null);
     public LinkableData<float> sizeMultiplier = new LinkableData<float>(1);
     public bool autoLinkToElementMagic = true;
+    public LinkableData<float> rotation = new LinkableData<float>(0);
 
     private MagicControllerTracker magicControllerTracker;
 
@@ -24,16 +25,17 @@ public class FormMagicCircle : MagicCircle
         mcType = MagicCircleType.Form;
         mySpriteRenderer = GetComponent<SpriteRenderer>();
         mySpriteRenderer.color = Color.black;
-        if( autoLinkToElementMagic && spellParent.initialElement != null )
+        if( spellParent.autoLinkMagicCircle && spellParent.initialMagicCircle != null )
         {
             MagicCircleDataLinks link = (MagicCircleDataLinks) spellParent.AddLink( LinkTypes.Data );
-            link.source = spellParent.initialElement;
+            link.source = spellParent.initialMagicCircle;
             link.destination = this;
             link.selectedProperty = "GetMagic";
             link.selectedLinkableProperty = "formableMagic";
             link.UpdateSourceAndDestination();
             link.link = true;
-            spellParent.initialElement.autoActivate = false;
+            spellParent.initialMagicCircle.autoActivate = false;
+            spellParent.mcmm.UpdateWithCreatedLink( link );
             // formableMagic.SetLinkedValue( emc.GetMagic );
         }
     }
@@ -45,6 +47,8 @@ public class FormMagicCircle : MagicCircle
             if( formableMagic.Value() != null  && magicControllerTracker.IsCurrentFormController( this ) )
             {
                 formableMagic.Value().sizeMultiplier = sizeMultiplier.Value();
+                formableMagic.Value().SetShape( myForm );
+                formableMagic.Value().rotation = Vector3.forward * rotation.Value();
             }
         }
     }
@@ -69,7 +73,10 @@ public class FormMagicCircle : MagicCircle
             magicControllerTracker.SetCurrentFormController( this );
 
             formableMagic.Value().SetShape( myForm );
-            formableMagic.Value().Activate();
+            if( !formableMagic.Value().IsActive() )
+            {
+                formableMagic.Value().Activate();
+            }
         }
         else
         {

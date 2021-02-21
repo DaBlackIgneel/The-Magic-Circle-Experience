@@ -23,6 +23,7 @@ public class UILineRender : Graphic//, IPointerDownHandler
     public MagicCircleMakerMenu mcmm;
     public bool isClicked;
     public bool deleteOnNoSource = false;
+    public Vector3 offsetMe;
 
     // Data Variables
     public bool isProperty = true;
@@ -47,7 +48,7 @@ public class UILineRender : Graphic//, IPointerDownHandler
                 if( ((Vector3)points[pr.referenceIndex] - (newPosition)).magnitude > 0.01f )
                 {
                     SetAllDirty();
-                    points[pr.referenceIndex] = newPosition;
+                    points[pr.referenceIndex] = newPosition + offsetMe;
                 }
             }
         }
@@ -162,7 +163,7 @@ public class UILineRender : Graphic//, IPointerDownHandler
             else if( i-1 >= 0 )
             {
                 angle = Mathf.Rad2Deg * Mathf.Atan2( points[i-1].y - point.y, points[i-1].x - point.x);//Vector3.Angle( point, points[i-1] );
-                print( angle );
+                print( point.y );
             }
             DrawVerticesForPoint( point, vh, angle );
         }

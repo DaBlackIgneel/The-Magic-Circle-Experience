@@ -8,14 +8,30 @@ public class Spell : MonoBehaviour
     public List<MagicCircleLinks> links = new List<MagicCircleLinks>(10);
     public MagicCircle baseNode;
     public MagicCircle previousMagicCircle;
-    public ElementMagicCircle initialElement;
+    public ElementMagicCircle initialMagicCircle;
     public bool autoLinkTransition = true;
+    public bool autoLinkMagicCircle = true;
+    public MagicCircleMakerMenu mcmm;
+
+    private List<MagicCircleLinks> updateLinksList = new List<MagicCircleLinks>(10);
 
     public void Activate()
     {
         if( baseNode != null )
         {
             baseNode.Activate();
+        }
+    }
+
+    void Update()
+    {
+        if( updateLinksList.Count > 0 )
+        {
+            foreach( MagicCircleLinks myMcl in updateLinksList )
+            {
+                mcmm.UpdateWithCreatedLink( myMcl );
+            }
+            updateLinksList.Clear();
         }
     }
 
@@ -38,9 +54,9 @@ public class Spell : MonoBehaviour
             {
                 baseNode = mc;
             }
-            if( initialElement == null && mc.GetMcType() == MagicCircleType.Element )
+            if( initialMagicCircle == null && mc.GetMcType() == MagicCircleType.Element )
             {
-                initialElement = (ElementMagicCircle) mc;
+                initialMagicCircle = (ElementMagicCircle) mc;
             }
 
             if( previousMagicCircle != null && autoLinkTransition )
@@ -48,6 +64,7 @@ public class Spell : MonoBehaviour
                 MagicCircleTransitionLinks link = (MagicCircleTransitionLinks) AddLink( LinkTypes.Transition );
                 link.source = previousMagicCircle;
                 link.destination = mc;
+                updateLinksList.Add( link );
             }
             previousMagicCircle = mc;
         }

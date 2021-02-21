@@ -46,16 +46,16 @@ public class MovementMagicCircle : MagicCircle
         //     ElementMagicCircle emc = mcParent.GetMagicCircle( (int)MagicCircleType.Element ) as ElementMagicCircle;
         //     movableMagic.SetLinkedValue( emc.GetMagicObject );
         // }
-        if( autoLinkToElementMagic && spellParent.initialElement != null )
+        if( spellParent.autoLinkMagicCircle && spellParent.initialMagicCircle != null )
         {
             MagicCircleDataLinks link = (MagicCircleDataLinks) spellParent.AddLink( LinkTypes.Data );
-            link.source = spellParent.initialElement;
+            link.source = spellParent.initialMagicCircle;
             link.destination = this;
             link.selectedProperty = "GetMagicObject";
             link.selectedLinkableProperty = "movableMagic";
             link.UpdateSourceAndDestination();
             link.link = true;
-            // spellParent.initialElement.autoActivate = false;
+            spellParent.mcmm.UpdateWithCreatedLink( link );
             // formableMagic.SetLinkedValue( emc.GetMagic );
         }
     }
@@ -128,8 +128,8 @@ public class MovementMagicCircle : MagicCircle
                                 break;
                             }
                             case MovementType.Control:
-                            {
-                                velocity = ( (Vector2)(targetPosition.Value() - movableRb.transform.position) - movableRb.velocity * (Mathf.Abs(force.Value())+1)/10f );
+                            { ///((targetX - particles.positions.x[i]) * randomSeed - velocitiesX[i] * force/1000f )
+                                velocity = ( (Vector2)(targetPosition.Value() - movableRb.transform.position) - movableRb.velocity * (Mathf.Abs(force.Value()))/250f );
                                 break;
                             }
                             default:

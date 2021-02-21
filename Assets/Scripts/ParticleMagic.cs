@@ -287,6 +287,11 @@ public class ParticleMagic : MonoBehaviour
         ps.Stop();
     }
 
+    public bool IsActive()
+    {
+        return ps.isPlaying;
+    }
+
     void GetPs()
     {
         ps = GetComponent<ParticleSystem>();

@@ -342,6 +342,7 @@ public class MagicCircleMakerMenu : MonoBehaviour
             usn.linkedSpellNode = sn;
             usn.SetUIMenu( this );
             uiSpellNodeList.Add( usn );
+            selectedUISN = usn;
         }
     }
 
@@ -350,6 +351,7 @@ public class MagicCircleMakerMenu : MonoBehaviour
         GameObject objSpell = new GameObject();
         currentSpell = (Spell) objSpell.AddComponent<Spell>();
         currentSpell.name = "New Generic Spell";
+        currentSpell.mcmm = this;
     }
 
     public void DeleteSelected()
@@ -382,6 +384,51 @@ public class MagicCircleMakerMenu : MonoBehaviour
     public void OnSpellAdded( MagicCircleType mct )
     {
 
+    }
+
+    public void ActivateMagicCircle( bool shouldActivate )
+    {
+        MagicCircle mc = (MagicCircle)selectedUISN.linkedSpellNode;
+        if( mc != null )
+        {
+            if( shouldActivate )
+            {
+                mc.Activate();
+            }
+            else
+            {
+                mc.Deactivate();
+            }
+        }
+    }
+
+    public void UpdateWithCreatedLink( MagicCircleLinks mcl )
+    {
+        GameObject obj = (GameObject) Instantiate( uiLinkPrefab, UiBoard );
+        UILineRender uiLine = obj.GetComponent<UILineRender>();
+        uiLine.linkedLink = mcl;
+        uiLine.mcmm = this;
+        uiLine.points.Clear();
+        Vector3 offset = ( mcl.GetLinkType() == LinkTypes.Transition ? Vector3.up * 5f : Vector3.zero);
+        for(int i = 0; i < uiSpellNodeList.Count; i++)
+        {
+            if( uiSpellNodeList[i].linkedSpellNode == mcl.source )
+            {
+                uiLine.AddReference( uiSpellNodeList[i], offset);
+                break;
+            }
+        }
+        for(int i = 0; i < uiSpellNodeList.Count; i++)
+        {
+            if( uiSpellNodeList[i].linkedSpellNode == mcl.destination )
+            {
+                uiLine.AddReference( uiSpellNodeList[i], offset );
+                break;
+            }
+        }
+        // uiLine.AddReference( selectedUISN );
+        uiLinkList.Add( uiLine );
+        uiLine.deleteOnNoSource = true;
     }
 
     public void SetLinkMode( int link )
@@ -419,6 +466,31 @@ public class MagicCircleMakerMenu : MonoBehaviour
                 return;
             }
         }
+    }
+
+    public void AutoLinkDataToNode()
+    {
+        if( selectedUISN != null )
+        {
+            ElementMagicCircle emc = (ElementMagicCircle) selectedUISN.linkedSpellNode;
+            if( emc != null )
+            {
+                currentSpell.initialMagicCircle = emc;
+            }
+            else
+            {
+                Debug.LogWarning("Can't auto link data to node. Element Node not selected");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("Can't auto link data to node. No node selected");
+        }
+    }
+
+    public void EnableAutoLinkData( bool shouldEnable )
+    {
+        currentSpell.autoLinkMagicCircle = shouldEnable;
     }
 
 
@@ -483,13 +555,11 @@ public class MagicCircleMakerMenu : MonoBehaviour
     {
         // public UnityEngine.UI.Slider size;
         // public UnityEngine.UI.InputField sizeInput;
-        // public UnityEngine.UI.Toggle autoLink;
         // public Dropdown form;
         FormMagicCircle fmc = (FormMagicCircle) selectedSpellNode;
         if( fmc != null )
         {
             formData.SetSize( fmc.sizeMultiplier.Value() );
-            formData.autoLink.isOn = fmc.autoLinkToElementMagic;
             formData.SetForm( fmc.GetForm() );
         }
     }
@@ -513,18 +583,24 @@ public class MagicCircleMakerMenu : MonoBehaviour
         }
     }
 
-    public void OnFormAutoLinkChanged( bool value )
+    public void OnFormRotationChange( float value )
     {
+        formData.OnRotationChanged();
         FormMagicCircle fmc = (FormMagicCircle) selectedSpellNode;
         if( fmc != null )
         {
-            fmc.autoLinkToElementMagic = formData.IsAutoLink();
+            fmc.rotation.SetDefaultValue( formData.GetRotation() );
         }
     }
 
-    public void OnFormEndEdit( string value )
+    public void OnFormSizeEndEdit( string value )
     {
         formData.SetSize( float.Parse( value ) );
+    }
+
+    public void OnFormRotationEndEdit( string value )
+    {
+        formData.SetRotation( float.Parse( value ) );
     }
 #endregion
 
@@ -537,17 +613,16 @@ public class MagicCircleMakerMenu : MonoBehaviour
         // public UnityEngine.UI.InputField forceInput;
         // public UnityEngine.UI.Slider angle;
         // public UnityEngine.UI.InputField angleInput;
-        // public UnityEngine.UI.Toggle autoLink;
         // public UnityEngine.UI.Toggle dragMagic;
         // public Dropdown movement;
         MovementMagicCircle mmc = (MovementMagicCircle) selectedSpellNode;
         if( mmc != null )
         {
+            UpdateMovementValues( mmc );
             movementData.SetInitialVelocity( mmc.initialVelocity.Value() );
             movementData.SetForce( mmc.force.Value() );
             movementData.SetAngle( mmc.directionAngle.Value() );
             movementData.SetMovement( mmc.GetMovement() );
-            movementData.autoLink.isOn = mmc.autoLinkToElementMagic;
             movementData.dragMagic.isOn = mmc.dragMagic;
         }
     }
@@ -557,6 +632,34 @@ public class MagicCircleMakerMenu : MonoBehaviour
         if( mmc != null )
         {
             mmc.SetMovement( movementData.GetMovement() );
+            UpdateMovementValues( mmc );
+        }
+    }
+
+    private void UpdateMovementValues( MovementMagicCircle mmc )
+    {
+        switch( mmc.GetMovement() )
+        {
+            case MovementType.Control:
+            {
+                movementData.SetMaxForce( 50 );
+                movementData.SetMinForce( 0 );
+                break;
+            }
+            case MovementType.Path:
+            {
+                goto case MovementType.Control;
+            }
+            case MovementType.Push:
+            {
+                movementData.SetMaxForce( 5 );
+                movementData.SetMinForce( -5 );
+                break;
+            }
+            default:
+            {
+                goto case MovementType.Push;
+            }
         }
     }
 
@@ -603,15 +706,6 @@ public class MagicCircleMakerMenu : MonoBehaviour
     public void OnMovementAngleEndEdit( string value )
     {
         movementData.SetAngle( float.Parse( value ) );
-    }
-
-    public void OnMovementAutoLinkChanged( bool value )
-    {
-        MovementMagicCircle mmc = (MovementMagicCircle) selectedSpellNode;
-        if( mmc != null )
-        {
-            mmc.autoLinkToElementMagic = movementData.IsAutoLink();
-        }
     }
 
     public void OnMovementDragMagicChanged( bool value )
@@ -821,12 +915,22 @@ public class MagicCircleMakerMenu : MonoBehaviour
         transitionData.SetDelay( float.Parse( value ) );
     }
 
+    private void UpdateTransitionDelay()
+    {
+        MagicCircleTransitionLinks tl = (MagicCircleTransitionLinks) selectedLink.linkedLink;
+        if( tl != null )
+        {
+            transitionData.SetDelay( tl.delayTime );
+        }
+    }
+
     public void UpdateLinkText()
     {
         if( selectedLink.linkedLink.GetLinkType() == LinkTypes.Transition )
         {
             transitionData.sourceLabel.text = selectedLink.linkedLink.source.gameObject.name;
             transitionData.destinationLabel.text = selectedLink.linkedLink.destination.gameObject.name;
+            UpdateTransitionDelay();
         }
         else
         {
@@ -1088,7 +1192,6 @@ public class MovementSpellNodeUiData
     public UnityEngine.UI.InputField forceInput;
     public UnityEngine.UI.Slider angle;
     public UnityEngine.UI.InputField angleInput;
-    public UnityEngine.UI.Toggle autoLink;
     public UnityEngine.UI.Toggle dragMagic;
     public Dropdown movement;
 
@@ -1112,6 +1215,16 @@ public class MovementSpellNodeUiData
     {
         force.value = value < force.maxValue ? value : force.maxValue;
         force.value = force.value > force.minValue ? force.value : force.minValue;
+    }
+
+    public void SetMaxForce( float value )
+    {
+        force.maxValue = value;
+    }
+
+    public void SetMinForce( float value )
+    {
+        force.minValue = value;
     }
 
     public float GetForce()
@@ -1140,11 +1253,6 @@ public class MovementSpellNodeUiData
         angleInput.text = angle.value.ToString("F1");
     }
 
-    public bool IsAutoLink()
-    {
-        return autoLink.isOn;
-    }
-
     public bool ShouldDragMagic()
     {
         return dragMagic.isOn;
@@ -1167,7 +1275,8 @@ public class FormSpellNodeUiData
 {
     public UnityEngine.UI.Slider size;
     public UnityEngine.UI.InputField sizeInput;
-    public UnityEngine.UI.Toggle autoLink;
+    public UnityEngine.UI.Slider rotation;
+    public UnityEngine.UI.InputField rotationInput;
     public Dropdown form;
 
     public void SetSize( float value )
@@ -1176,9 +1285,19 @@ public class FormSpellNodeUiData
         size.value = size.value > size.minValue ? size.value : size.minValue;
     }
 
+    public void SetRotation( float value )
+    {
+        rotation.value = value < rotation.maxValue ? value : rotation.maxValue;
+        rotation.value = rotation.value > rotation.minValue ? rotation.value : rotation.minValue;
+    }
+
     public float GetSize()
     {
         return size.value;
+    }
+    public float GetRotation()
+    {
+        return rotation.value;
     }
 
     public void OnSizeChanged()
@@ -1186,9 +1305,9 @@ public class FormSpellNodeUiData
         sizeInput.text = size.value.ToString("F2");
     }
 
-    public bool IsAutoLink()
+    public void OnRotationChanged()
     {
-        return autoLink.isOn;
+        rotationInput.text = rotation.value.ToString("F2");
     }
 
     public void SetForm( FormType formType )

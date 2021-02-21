@@ -11,6 +11,7 @@ public class ElementMagicCircle : MagicCircle
     public ElementPhase elementPhase = ElementPhase.Liquid;
     public Collider2D magicCollider;
     public bool autoActivate = true;
+    public int shouldActivate = 0;
 
     ParticleMagic currentMagic;
     GameObject magicParent;
@@ -61,6 +62,14 @@ public class ElementMagicCircle : MagicCircle
                 }
             }
         }
+        if( shouldActivate == 1 )
+        {
+            Activate();
+        }
+        else if( shouldActivate > 1 )
+        {
+            shouldActivate--;
+        }
     }
 
     public override void SetMcType( MagicCircleType newMcType )
@@ -97,6 +106,16 @@ public class ElementMagicCircle : MagicCircle
 
     public override void Activate()
     {
+        if( isActive )
+        {
+            Deactivate();
+            shouldActivate = 10;
+            return;
+        }
+        if( shouldActivate > 0 )
+        {
+            shouldActivate = 0;
+        }
         isActive = true;
         if( currentMagic != null )
         {
