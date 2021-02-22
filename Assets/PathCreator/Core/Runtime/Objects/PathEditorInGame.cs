@@ -8,10 +8,11 @@ using UnityEngine;
 namespace PathCreationEditor {
     /// Editor class for the creation of Bezier and Vertex paths
 
-    [CustomEditor (typeof (PathCreator))]
-    public class PathEditor : Editor {
+    public class PathEditorInGame : MonoBehaviour {
 
-        #region Fields
+#region Fields
+
+        public GameObject handlePrefab;
 
         // Interaction:
         const float segmentSelectDistanceThreshold = 10f;
@@ -41,6 +42,7 @@ namespace PathCreationEditor {
         Dictionary<GlobalDisplaySettings.HandleType, Handles.CapFunction> capFunctions;
         ArcHandle anchorAngleHandle = new ArcHandle ();
         VertexPath normalsVertexPath;
+        List<GameObject> pathAnchors = new List<GameObject>();
 
         // State variables:
         int selectedSegmentIndex;
@@ -62,248 +64,258 @@ namespace PathCreationEditor {
         // Constants
         const int bezierPathTab = 0;
         const int vertexPathTab = 1;
+        LineRenderer bezierPathLr;
 
-        #endregion
+#endregion
 
-        #region Inspectors
+    public void SetPath( PathCreator path)
+    {
+        creator = path;
+    }
 
-        public override void OnInspectorGUI () {
-            // Initialize GUI styles
-            if (boldFoldoutStyle == null) {
-                boldFoldoutStyle = new GUIStyle (EditorStyles.foldout);
-                boldFoldoutStyle.fontStyle = FontStyle.Bold;
+#region Inspectors
+
+        // public void OnInspectorGUI () {
+        //     // Initialize GUI styles
+        //     if (boldFoldoutStyle == null) {
+        //         boldFoldoutStyle = new GUIStyle (EditorStyles.foldout);
+        //         boldFoldoutStyle.fontStyle = FontStyle.Bold;
+        //     }
+        //
+        //     Undo.RecordObject (creator, "Path settings changed");
+        //
+        //     // Draw Bezier and Vertex tabs
+        //     int tabIndex = GUILayout.Toolbar (data.tabIndex, tabNames);
+        //     if (tabIndex != data.tabIndex) {
+        //         data.tabIndex = tabIndex;
+        //         TabChanged ();
+        //     }
+        //
+        //     // Draw inspector for active tab
+        //     switch (data.tabIndex) {
+        //         case bezierPathTab:
+        //             DrawBezierPathInspector ();
+        //             break;
+        //         case vertexPathTab:
+        //             DrawVertexPathInspector ();
+        //             break;
+        //     }
+        //
+        //     // Notify of undo/redo that might modify the path
+        //     if (Event.current.type == EventType.ValidateCommand && Event.current.commandName == "UndoRedoPerformed") {
+        //         data.PathModifiedByUndo ();
+        //     }
+        // }
+        //
+        // void DrawBezierPathInspector () {
+        //     using (var check = new EditorGUI.ChangeCheckScope ()) {
+        //         // Path options:
+        //         data.showPathOptions = EditorGUILayout.Foldout (data.showPathOptions, new GUIContent ("Bézier Path Options"), true, boldFoldoutStyle);
+        //         if (data.showPathOptions) {
+        //             bezierPath.Space = (PathSpace) EditorGUILayout.Popup ("Space", (int) bezierPath.Space, spaceNames);
+        //             bezierPath.ControlPointMode = (BezierPath.ControlMode) EditorGUILayout.EnumPopup (new GUIContent ("Control Mode"), bezierPath.ControlPointMode);
+        //             if (bezierPath.ControlPointMode == BezierPath.ControlMode.Automatic) {
+        //                 bezierPath.AutoControlLength = EditorGUILayout.Slider (new GUIContent ("Control Spacing"), bezierPath.AutoControlLength, 0, 1);
+        //             }
+        //
+        //             bezierPath.IsClosed = EditorGUILayout.Toggle ("Closed Path", bezierPath.IsClosed);
+        //             data.showTransformTool = EditorGUILayout.Toggle (new GUIContent ("Enable Transforms"), data.showTransformTool);
+        //
+        //             Tools.hidden = !data.showTransformTool;
+        //
+        //             // Check if out of bounds (can occur after undo operations)
+        //             if (handleIndexToDisplayAsTransform >= bezierPath.NumPoints) {
+        //                 handleIndexToDisplayAsTransform = -1;
+        //             }
+        //
+        //             // If a point has been selected
+        //             if (handleIndexToDisplayAsTransform != -1) {
+        //                 EditorGUILayout.LabelField ("Selected Point:");
+        //
+        //                 using (new EditorGUI.IndentLevelScope ()) {
+        //                     var currentPosition = creator.bezierPath[handleIndexToDisplayAsTransform];
+        //                     var newPosition = EditorGUILayout.Vector3Field ("Position", currentPosition);
+        //                     if (newPosition != currentPosition) {
+        //                         Undo.RecordObject (creator, "Move point");
+        //                         creator.bezierPath.MovePoint (handleIndexToDisplayAsTransform, newPosition);
+        //                     }
+        //                     // Don't draw the angle field if we aren't selecting an anchor point/not in 3d space
+        //                     if (handleIndexToDisplayAsTransform % 3 == 0 && creator.bezierPath.Space == PathSpace.xyz) {
+        //                         var anchorIndex = handleIndexToDisplayAsTransform / 3;
+        //                         var currentAngle = creator.bezierPath.GetAnchorNormalAngle (anchorIndex);
+        //                         var newAngle = EditorGUILayout.FloatField ("Angle", currentAngle);
+        //                         if (newAngle != currentAngle) {
+        //                             Undo.RecordObject (creator, "Set Angle");
+        //                             creator.bezierPath.SetAnchorNormalAngle (anchorIndex, newAngle);
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //
+        //             if (data.showTransformTool & (handleIndexToDisplayAsTransform == -1)) {
+        //                 if (GUILayout.Button ("Centre Transform")) {
+        //
+        //                     Vector3 worldCentre = bezierPath.CalculateBoundsWithTransform (creator.transform).center;
+        //                     Vector3 transformPos = creator.transform.position;
+        //                     if (bezierPath.Space == PathSpace.xy) {
+        //                         transformPos = new Vector3 (transformPos.x, transformPos.y, 0);
+        //                     } else if (bezierPath.Space == PathSpace.xz) {
+        //                         transformPos = new Vector3 (transformPos.x, 0, transformPos.z);
+        //                     }
+        //                     Vector3 worldCentreToTransform = transformPos - worldCentre;
+        //
+        //                     if (worldCentre != creator.transform.position) {
+        //                         //Undo.RecordObject (creator, "Centralize Transform");
+        //                         if (worldCentreToTransform != Vector3.zero) {
+        //                             Vector3 localCentreToTransform = MathUtility.InverseTransformVector (worldCentreToTransform, creator.transform, bezierPath.Space);
+        //                             for (int i = 0; i < bezierPath.NumPoints; i++) {
+        //                                 bezierPath.SetPoint (i, bezierPath.GetPoint (i) + localCentreToTransform, true);
+        //                             }
+        //                         }
+        //
+        //                         creator.transform.position = worldCentre;
+        //                         bezierPath.NotifyPathModified ();
+        //                     }
+        //                 }
+        //             }
+        //
+        //             if (GUILayout.Button ("Reset Path")) {
+        //                 Undo.RecordObject (creator, "Reset Path");
+        //                 bool in2DEditorMode = EditorSettings.defaultBehaviorMode == EditorBehaviorMode.Mode2D;
+        //                 data.ResetBezierPath (creator.transform.position, in2DEditorMode);
+        //                 EditorApplication.QueuePlayerLoopUpdate ();
+        //             }
+        //
+        //             GUILayout.Space (inspectorSectionSpacing);
+        //         }
+        //
+        //         data.showNormals = EditorGUILayout.Foldout (data.showNormals, new GUIContent ("Normals Options"), true, boldFoldoutStyle);
+        //         if (data.showNormals) {
+        //             bezierPath.FlipNormals = EditorGUILayout.Toggle (new GUIContent ("Flip Normals"), bezierPath.FlipNormals);
+        //             if (bezierPath.Space == PathSpace.xyz) {
+        //                 bezierPath.GlobalNormalsAngle = EditorGUILayout.Slider (new GUIContent ("Global Angle"), bezierPath.GlobalNormalsAngle, 0, 360);
+        //
+        //                 if (GUILayout.Button ("Reset Normals")) {
+        //                     Undo.RecordObject (creator, "Reset Normals");
+        //                     bezierPath.FlipNormals = false;
+        //                     bezierPath.ResetNormalAngles ();
+        //                 }
+        //             }
+        //             GUILayout.Space (inspectorSectionSpacing);
+        //         }
+        //
+        //         // Editor display options
+        //         data.showDisplayOptions = EditorGUILayout.Foldout (data.showDisplayOptions, new GUIContent ("Display Options"), true, boldFoldoutStyle);
+        //         if (data.showDisplayOptions) {
+        //             data.showPathBounds = GUILayout.Toggle (data.showPathBounds, new GUIContent ("Show Path Bounds"));
+        //             data.showPerSegmentBounds = GUILayout.Toggle (data.showPerSegmentBounds, new GUIContent ("Show Segment Bounds"));
+        //             data.displayAnchorPoints = GUILayout.Toggle (data.displayAnchorPoints, new GUIContent ("Show Anchor Points"));
+        //             if (!(bezierPath.ControlPointMode == BezierPath.ControlMode.Automatic && globalDisplaySettings.hideAutoControls)) {
+        //                 data.displayControlPoints = GUILayout.Toggle (data.displayControlPoints, new GUIContent ("Show Control Points"));
+        //             }
+        //             data.keepConstantHandleSize = GUILayout.Toggle (data.keepConstantHandleSize, new GUIContent ("Constant Point Size", constantSizeTooltip));
+        //             data.bezierHandleScale = Mathf.Max (0, EditorGUILayout.FloatField (new GUIContent ("Handle Scale"), data.bezierHandleScale));
+        //             DrawGlobalDisplaySettingsInspector ();
+        //         }
+        //
+        //         if (check.changed) {
+        //             SceneView.RepaintAll ();
+        //             EditorApplication.QueuePlayerLoopUpdate ();
+        //         }
+        //     }
+        // }
+        //
+        // void DrawVertexPathInspector () {
+        //
+        //     GUILayout.Space (inspectorSectionSpacing);
+        //     EditorGUILayout.LabelField ("Vertex count: " + creator.path.NumPoints);
+        //     GUILayout.Space (inspectorSectionSpacing);
+        //
+        //     data.showVertexPathOptions = EditorGUILayout.Foldout (data.showVertexPathOptions, new GUIContent ("Vertex Path Options"), true, boldFoldoutStyle);
+        //     if (data.showVertexPathOptions) {
+        //         using (var check = new EditorGUI.ChangeCheckScope ()) {
+        //             data.vertexPathMaxAngleError = EditorGUILayout.Slider (new GUIContent ("Max Angle Error"), data.vertexPathMaxAngleError, 0, 45);
+        //             data.vertexPathMinVertexSpacing = EditorGUILayout.Slider (new GUIContent ("Min Vertex Dst"), data.vertexPathMinVertexSpacing, 0, 1);
+        //
+        //             GUILayout.Space (inspectorSectionSpacing);
+        //             if (check.changed) {
+        //                 data.VertexPathSettingsChanged ();
+        //                 SceneView.RepaintAll ();
+        //                 EditorApplication.QueuePlayerLoopUpdate ();
+        //             }
+        //         }
+        //     }
+        //
+        //     data.showVertexPathDisplayOptions = EditorGUILayout.Foldout (data.showVertexPathDisplayOptions, new GUIContent ("Display Options"), true, boldFoldoutStyle);
+        //     if (data.showVertexPathDisplayOptions) {
+        //         using (var check = new EditorGUI.ChangeCheckScope ()) {
+        //             data.showNormalsInVertexMode = GUILayout.Toggle (data.showNormalsInVertexMode, new GUIContent ("Show Normals"));
+        //             data.showBezierPathInVertexMode = GUILayout.Toggle (data.showBezierPathInVertexMode, new GUIContent ("Show Bezier Path"));
+        //
+        //             if (check.changed) {
+        //                 SceneView.RepaintAll ();
+        //                 EditorApplication.QueuePlayerLoopUpdate ();
+        //             }
+        //         }
+        //         DrawGlobalDisplaySettingsInspector ();
+        //     }
+        // }
+        //
+        // void DrawGlobalDisplaySettingsInspector () {
+        //     using (var check = new EditorGUI.ChangeCheckScope ()) {
+        //         data.globalDisplaySettingsFoldout = EditorGUILayout.InspectorTitlebar (data.globalDisplaySettingsFoldout, globalDisplaySettings);
+        //         if (data.globalDisplaySettingsFoldout) {
+        //             CreateCachedEditor (globalDisplaySettings, null, ref globalDisplaySettingsEditor);
+        //             globalDisplaySettingsEditor.OnInspectorGUI ();
+        //         }
+        //         if (check.changed) {
+        //             UpdateGlobalDisplaySettings ();
+        //             SceneView.RepaintAll ();
+        //         }
+        //     }
+        // }
+
+#endregion
+
+#region Scene GUI
+
+        void Update () {
+            // if (!globalDisplaySettings.visibleBehindObjects) {
+            //     Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
+            // }
+
+            // EventType eventType = Event.current.type;
+            if( Input.GetKeyDown( KeyCode.LeftShift ) )
+            {
+                AddPoint();
             }
 
-            Undo.RecordObject (creator, "Path settings changed");
-
-            // Draw Bezier and Vertex tabs
-            int tabIndex = GUILayout.Toolbar (data.tabIndex, tabNames);
-            if (tabIndex != data.tabIndex) {
-                data.tabIndex = tabIndex;
-                TabChanged ();
-            }
-
-            // Draw inspector for active tab
-            switch (data.tabIndex) {
-                case bezierPathTab:
-                    DrawBezierPathInspector ();
-                    break;
-                case vertexPathTab:
-                    DrawVertexPathInspector ();
-                    break;
-            }
-
-            // Notify of undo/redo that might modify the path
-            if (Event.current.type == EventType.ValidateCommand && Event.current.commandName == "UndoRedoPerformed") {
-                data.PathModifiedByUndo ();
-            }
-        }
-
-        void DrawBezierPathInspector () {
-            using (var check = new EditorGUI.ChangeCheckScope ()) {
-                // Path options:
-                data.showPathOptions = EditorGUILayout.Foldout (data.showPathOptions, new GUIContent ("Bézier Path Options"), true, boldFoldoutStyle);
-                if (data.showPathOptions) {
-                    bezierPath.Space = (PathSpace) EditorGUILayout.Popup ("Space", (int) bezierPath.Space, spaceNames);
-                    bezierPath.ControlPointMode = (BezierPath.ControlMode) EditorGUILayout.EnumPopup (new GUIContent ("Control Mode"), bezierPath.ControlPointMode);
-                    if (bezierPath.ControlPointMode == BezierPath.ControlMode.Automatic) {
-                        bezierPath.AutoControlLength = EditorGUILayout.Slider (new GUIContent ("Control Spacing"), bezierPath.AutoControlLength, 0, 1);
-                    }
-
-                    bezierPath.IsClosed = EditorGUILayout.Toggle ("Closed Path", bezierPath.IsClosed);
-                    data.showTransformTool = EditorGUILayout.Toggle (new GUIContent ("Enable Transforms"), data.showTransformTool);
-
-                    Tools.hidden = !data.showTransformTool;
-
-                    // Check if out of bounds (can occur after undo operations)
-                    if (handleIndexToDisplayAsTransform >= bezierPath.NumPoints) {
-                        handleIndexToDisplayAsTransform = -1;
-                    }
-
-                    // If a point has been selected
-                    if (handleIndexToDisplayAsTransform != -1) {
-                        EditorGUILayout.LabelField ("Selected Point:");
-
-                        using (new EditorGUI.IndentLevelScope ()) {
-                            var currentPosition = creator.bezierPath[handleIndexToDisplayAsTransform];
-                            var newPosition = EditorGUILayout.Vector3Field ("Position", currentPosition);
-                            if (newPosition != currentPosition) {
-                                Undo.RecordObject (creator, "Move point");
-                                creator.bezierPath.MovePoint (handleIndexToDisplayAsTransform, newPosition);
-                            }
-                            // Don't draw the angle field if we aren't selecting an anchor point/not in 3d space
-                            if (handleIndexToDisplayAsTransform % 3 == 0 && creator.bezierPath.Space == PathSpace.xyz) {
-                                var anchorIndex = handleIndexToDisplayAsTransform / 3;
-                                var currentAngle = creator.bezierPath.GetAnchorNormalAngle (anchorIndex);
-                                var newAngle = EditorGUILayout.FloatField ("Angle", currentAngle);
-                                if (newAngle != currentAngle) {
-                                    Undo.RecordObject (creator, "Set Angle");
-                                    creator.bezierPath.SetAnchorNormalAngle (anchorIndex, newAngle);
-                                }
-                            }
-                        }
-                    }
-
-                    if (data.showTransformTool & (handleIndexToDisplayAsTransform == -1)) {
-                        if (GUILayout.Button ("Centre Transform")) {
-
-                            Vector3 worldCentre = bezierPath.CalculateBoundsWithTransform (creator.transform).center;
-                            Vector3 transformPos = creator.transform.position;
-                            if (bezierPath.Space == PathSpace.xy) {
-                                transformPos = new Vector3 (transformPos.x, transformPos.y, 0);
-                            } else if (bezierPath.Space == PathSpace.xz) {
-                                transformPos = new Vector3 (transformPos.x, 0, transformPos.z);
-                            }
-                            Vector3 worldCentreToTransform = transformPos - worldCentre;
-
-                            if (worldCentre != creator.transform.position) {
-                                //Undo.RecordObject (creator, "Centralize Transform");
-                                if (worldCentreToTransform != Vector3.zero) {
-                                    Vector3 localCentreToTransform = MathUtility.InverseTransformVector (worldCentreToTransform, creator.transform, bezierPath.Space);
-                                    for (int i = 0; i < bezierPath.NumPoints; i++) {
-                                        bezierPath.SetPoint (i, bezierPath.GetPoint (i) + localCentreToTransform, true);
-                                    }
-                                }
-
-                                creator.transform.position = worldCentre;
-                                bezierPath.NotifyPathModified ();
-                            }
-                        }
-                    }
-
-                    if (GUILayout.Button ("Reset Path")) {
-                        Undo.RecordObject (creator, "Reset Path");
-                        bool in2DEditorMode = EditorSettings.defaultBehaviorMode == EditorBehaviorMode.Mode2D;
-                        data.ResetBezierPath (creator.transform.position, in2DEditorMode);
-                        EditorApplication.QueuePlayerLoopUpdate ();
-                    }
-
-                    GUILayout.Space (inspectorSectionSpacing);
-                }
-
-                data.showNormals = EditorGUILayout.Foldout (data.showNormals, new GUIContent ("Normals Options"), true, boldFoldoutStyle);
-                if (data.showNormals) {
-                    bezierPath.FlipNormals = EditorGUILayout.Toggle (new GUIContent ("Flip Normals"), bezierPath.FlipNormals);
-                    if (bezierPath.Space == PathSpace.xyz) {
-                        bezierPath.GlobalNormalsAngle = EditorGUILayout.Slider (new GUIContent ("Global Angle"), bezierPath.GlobalNormalsAngle, 0, 360);
-
-                        if (GUILayout.Button ("Reset Normals")) {
-                            Undo.RecordObject (creator, "Reset Normals");
-                            bezierPath.FlipNormals = false;
-                            bezierPath.ResetNormalAngles ();
-                        }
-                    }
-                    GUILayout.Space (inspectorSectionSpacing);
-                }
-
-                // Editor display options
-                data.showDisplayOptions = EditorGUILayout.Foldout (data.showDisplayOptions, new GUIContent ("Display Options"), true, boldFoldoutStyle);
-                if (data.showDisplayOptions) {
-                    data.showPathBounds = GUILayout.Toggle (data.showPathBounds, new GUIContent ("Show Path Bounds"));
-                    data.showPerSegmentBounds = GUILayout.Toggle (data.showPerSegmentBounds, new GUIContent ("Show Segment Bounds"));
-                    data.displayAnchorPoints = GUILayout.Toggle (data.displayAnchorPoints, new GUIContent ("Show Anchor Points"));
-                    if (!(bezierPath.ControlPointMode == BezierPath.ControlMode.Automatic && globalDisplaySettings.hideAutoControls)) {
-                        data.displayControlPoints = GUILayout.Toggle (data.displayControlPoints, new GUIContent ("Show Control Points"));
-                    }
-                    data.keepConstantHandleSize = GUILayout.Toggle (data.keepConstantHandleSize, new GUIContent ("Constant Point Size", constantSizeTooltip));
-                    data.bezierHandleScale = Mathf.Max (0, EditorGUILayout.FloatField (new GUIContent ("Handle Scale"), data.bezierHandleScale));
-                    DrawGlobalDisplaySettingsInspector ();
-                }
-
-                if (check.changed) {
-                    SceneView.RepaintAll ();
-                    EditorApplication.QueuePlayerLoopUpdate ();
-                }
-            }
-        }
-
-        void DrawVertexPathInspector () {
-
-            GUILayout.Space (inspectorSectionSpacing);
-            EditorGUILayout.LabelField ("Vertex count: " + creator.path.NumPoints);
-            GUILayout.Space (inspectorSectionSpacing);
-
-            data.showVertexPathOptions = EditorGUILayout.Foldout (data.showVertexPathOptions, new GUIContent ("Vertex Path Options"), true, boldFoldoutStyle);
-            if (data.showVertexPathOptions) {
-                using (var check = new EditorGUI.ChangeCheckScope ()) {
-                    data.vertexPathMaxAngleError = EditorGUILayout.Slider (new GUIContent ("Max Angle Error"), data.vertexPathMaxAngleError, 0, 45);
-                    data.vertexPathMinVertexSpacing = EditorGUILayout.Slider (new GUIContent ("Min Vertex Dst"), data.vertexPathMinVertexSpacing, 0, 1);
-
-                    GUILayout.Space (inspectorSectionSpacing);
-                    if (check.changed) {
-                        data.VertexPathSettingsChanged ();
-                        SceneView.RepaintAll ();
-                        EditorApplication.QueuePlayerLoopUpdate ();
-                    }
-                }
-            }
-
-            data.showVertexPathDisplayOptions = EditorGUILayout.Foldout (data.showVertexPathDisplayOptions, new GUIContent ("Display Options"), true, boldFoldoutStyle);
-            if (data.showVertexPathDisplayOptions) {
-                using (var check = new EditorGUI.ChangeCheckScope ()) {
-                    data.showNormalsInVertexMode = GUILayout.Toggle (data.showNormalsInVertexMode, new GUIContent ("Show Normals"));
-                    data.showBezierPathInVertexMode = GUILayout.Toggle (data.showBezierPathInVertexMode, new GUIContent ("Show Bezier Path"));
-
-                    if (check.changed) {
-                        SceneView.RepaintAll ();
-                        EditorApplication.QueuePlayerLoopUpdate ();
-                    }
-                }
-                DrawGlobalDisplaySettingsInspector ();
-            }
-        }
-
-        void DrawGlobalDisplaySettingsInspector () {
-            using (var check = new EditorGUI.ChangeCheckScope ()) {
-                data.globalDisplaySettingsFoldout = EditorGUILayout.InspectorTitlebar (data.globalDisplaySettingsFoldout, globalDisplaySettings);
-                if (data.globalDisplaySettingsFoldout) {
-                    CreateCachedEditor (globalDisplaySettings, null, ref globalDisplaySettingsEditor);
-                    globalDisplaySettingsEditor.OnInspectorGUI ();
-                }
-                if (check.changed) {
-                    UpdateGlobalDisplaySettings ();
-                    SceneView.RepaintAll ();
-                }
-            }
-        }
-
-        #endregion
-
-        #region Scene GUI
-
-        void OnSceneGUI () {
-            if (!globalDisplaySettings.visibleBehindObjects) {
-                Handles.zTest = UnityEngine.Rendering.CompareFunction.LessEqual;
-            }
-
-            EventType eventType = Event.current.type;
-
-            using (var check = new EditorGUI.ChangeCheckScope ()) {
+            // using (var check = new EditorGUI.ChangeCheckScope ()) {
                 handlesStartCol = Handles.color;
-                switch (data.tabIndex) {
-                    case bezierPathTab:
-                        if (eventType != EventType.Repaint && eventType != EventType.Layout) {
-                            ProcessBezierPathInput (Event.current);
-                        }
-
+                // switch (data.tabIndex) {
+                //     case bezierPathTab:
+                //         if (eventType != EventType.Repaint && eventType != EventType.Layout) {
+                            // ProcessBezierPathInput (Event.current);
+                //         }
+                //
                         DrawBezierPathSceneEditor ();
-                        break;
-                    case vertexPathTab:
-                        if (eventType == EventType.Repaint) {
-                            DrawVertexPathSceneEditor ();
-                        }
-                        break;
-                }
+                    //     break;
+                    // case vertexPathTab:
+                //         if (eventType == EventType.Repaint) {
+                            // DrawVertexPathSceneEditor ();
+                //         }
+                        // break;
+                // }
 
                 // Don't allow clicking over empty space to deselect the object
-                if (eventType == EventType.Layout) {
-                    HandleUtility.AddDefaultControl (0);
-                }
+                // if (eventType == EventType.Layout) {
+                //     HandleUtility.AddDefaultControl (0);
+                // }
 
-                if (check.changed) {
-                    EditorApplication.QueuePlayerLoopUpdate ();
-                }
-            }
+                // if (check.changed) {
+                //     EditorApplication.QueuePlayerLoopUpdate ();
+                // }
+            // }
 
             SetTransformState ();
         }
@@ -352,7 +364,8 @@ namespace PathCreationEditor {
                 int handleIndex = (previousMouseOverHandleIndex + i) % bezierPath.NumPoints;
                 float handleRadius = GetHandleDiameter (globalDisplaySettings.anchorSize * data.bezierHandleScale, bezierPath[handleIndex]) / 2f;
                 Vector3 pos = MathUtility.TransformPoint (bezierPath[handleIndex], creator.transform, bezierPath.Space);
-                float dst = HandleUtility.DistanceToCircle (pos, handleRadius);
+                // float dst = HandleUtility.DistanceToCircle (pos, handleRadius);
+                float dst = 3;
                 if (dst == 0) {
                     mouseOverHandleIndex = handleIndex;
                     break;
@@ -361,7 +374,7 @@ namespace PathCreationEditor {
 
             // Shift-left click (when mouse not over a handle) to split or add segment
             if (mouseOverHandleIndex == -1) {
-                if (e.type == EventType.MouseDown && e.button == 0 && e.shift) {
+                if (/*e.type == EventType.MouseDown && e.button == 0 && e.shift*/ 1 == 2) {
                     UpdatePathMouseInfo ();
                     // Insert point along selected segment
                     if (selectedSegmentIndex != -1 && selectedSegmentIndex < bezierPath.NumSegments) {
@@ -399,7 +412,7 @@ namespace PathCreationEditor {
                         handleIndexToDisplayAsTransform = -1;
                     }
                     mouseOverHandleIndex = -1;
-                    Repaint ();
+                    // Repaint ();
                 }
             }
 
@@ -413,11 +426,11 @@ namespace PathCreationEditor {
                     if (pathMouseInfo.mouseDstToLine < segmentSelectDistanceThreshold) {
                         if (pathMouseInfo.closestSegmentIndex != selectedSegmentIndex) {
                             selectedSegmentIndex = pathMouseInfo.closestSegmentIndex;
-                            HandleUtility.Repaint ();
+                            // HandleUtility.Repaint ();
                         }
                     } else {
                         selectedSegmentIndex = -1;
-                        HandleUtility.Repaint ();
+                        // HandleUtility.Repaint ();
                     }
 
                 }
@@ -427,12 +440,35 @@ namespace PathCreationEditor {
 
         }
 
+        void AddPoint()
+        {
+            UpdatePathMouseInfo ();
+            if (selectedSegmentIndex != -1 && selectedSegmentIndex < bezierPath.NumSegments) {
+                Vector3 newPathPoint = pathMouseInfo.closestWorldPointToMouse;
+                newPathPoint = MathUtility.InverseTransformPoint (newPathPoint, creator.transform, bezierPath.Space);
+                bezierPath.SplitSegment (newPathPoint, selectedSegmentIndex, pathMouseInfo.timeOnBezierSegment);
+            }
+            // If path is not a closed loop, add new point on to the end of the path
+            else if (!bezierPath.IsClosed) {
+                // insert new point at same dst from scene camera as the point that comes before it (for a 3d path)
+                // float dstCamToEndpoint = (Camera.current.transform.position - bezierPath[bezierPath.NumPoints - 1]).magnitude;
+                Vector3 newPathPoint = Vector3.Scale(Camera.main.ScreenToWorldPoint(Input.mousePosition), new Vector3(1,1,0) );//MouseUtility.GetMouseWorldPosition (bezierPath.Space, dstCamToEndpoint);
+                newPathPoint = MathUtility.InverseTransformPoint (newPathPoint, creator.transform, bezierPath.Space);
+
+                // if (e.control || e.command) {
+                //     bezierPath.AddSegmentToStart (newPathPoint);
+                // } else {
+                    bezierPath.AddSegmentToEnd (newPathPoint);
+                // }
+            }
+        }
+
         void DrawBezierPathSceneEditor () {
 
             bool displayControlPoints = data.displayControlPoints && (bezierPath.ControlPointMode != BezierPath.ControlMode.Automatic || !globalDisplaySettings.hideAutoControls);
             Bounds bounds = bezierPath.CalculateBoundsWithTransform (creator.transform);
 
-            if (Event.current.type == EventType.Repaint) {
+            if ( /*Event.current.type == EventType.Repaint*/ true) {
                 for (int i = 0; i < bezierPath.NumSegments; i++) {
                     Vector3[] points = bezierPath.GetPointsInSegment (i);
                     for (int j = 0; j < points.Length; j++) {
@@ -442,25 +478,25 @@ namespace PathCreationEditor {
                     if (data.showPerSegmentBounds) {
                         Bounds segmentBounds = CubicBezierUtility.CalculateSegmentBounds (points[0], points[1], points[2], points[3]);
                         Handles.color = globalDisplaySettings.segmentBounds;
-                        Handles.DrawWireCube (segmentBounds.center, segmentBounds.size);
+                        // Handles.DrawWireCube (segmentBounds.center, segmentBounds.size);
                     }
 
                     // Draw lines between control points
                     if (displayControlPoints) {
-                        Handles.color = (bezierPath.ControlPointMode == BezierPath.ControlMode.Automatic) ? globalDisplaySettings.handleDisabled : globalDisplaySettings.controlLine;
-                        Handles.DrawLine (points[1], points[0]);
-                        Handles.DrawLine (points[2], points[3]);
+                        // Handles.color = (bezierPath.ControlPointMode == BezierPath.ControlMode.Automatic) ? globalDisplaySettings.handleDisabled : globalDisplaySettings.controlLine;
+                        // Handles.DrawLine (points[1], points[0]);
+                        // Handles.DrawLine (points[2], points[3]);
                     }
 
                     // Draw path
                     bool highlightSegment = (i == selectedSegmentIndex && Event.current.shift && draggingHandleIndex == -1 && mouseOverHandleIndex == -1);
                     Color segmentCol = (highlightSegment) ? globalDisplaySettings.highlightedPath : globalDisplaySettings.bezierPath;
-                    Handles.DrawBezier (points[0], points[3], points[1], points[2], segmentCol, null, 2);
+                    DrawBezier (points[0], points[3], points[1], points[2], segmentCol, .1f, i);
                 }
 
                 if (data.showPathBounds) {
                     Handles.color = globalDisplaySettings.bounds;
-                    Handles.DrawWireCube (bounds.center, bounds.size);
+                    // Handles.DrawWireCube (bounds.center, bounds.size);
                 }
 
                 // Draw normals
@@ -472,7 +508,7 @@ namespace PathCreationEditor {
 
                     if (editingNormalsOld != data.showNormals) {
                         editingNormalsOld = data.showNormals;
-                        Repaint ();
+                        // Repaint ();
                     }
 
                     Vector3[] normalLines = new Vector3[normalsVertexPath.NumPoints * 2];
@@ -481,21 +517,75 @@ namespace PathCreationEditor {
                         normalLines[i * 2] = normalsVertexPath.GetPoint (i);
                         normalLines[i * 2 + 1] = normalsVertexPath.GetPoint (i) + normalsVertexPath.GetNormal (i) * globalDisplaySettings.normalsLength;
                     }
-                    Handles.DrawLines (normalLines);
+                    // Handles.DrawLines (normalLines);
                 }
             }
 
             if (data.displayAnchorPoints) {
                 for (int i = 0; i < bezierPath.NumPoints; i += 3) {
-                    DrawHandle (i);
+                    // DrawHandle (i);
+                    if( i >= pathAnchors.Count )
+                    {
+                        GameObject tempAnchor = (GameObject) Instantiate(handlePrefab, this.transform);
+                        tempAnchor.transform.position = MathUtility.TransformPoint (bezierPath[i], creator.transform, bezierPath.Space);
+                        pathAnchors.Add(tempAnchor);
+                    }
+                    else
+                    {
+                        bezierPath.MovePoint(i, MathUtility.InverseTransformPoint( pathAnchors[i].transform.position, creator.transform, bezierPath.Space) );
+                    }
                 }
             }
-            if (displayControlPoints) {
-                for (int i = 1; i < bezierPath.NumPoints - 1; i += 3) {
-                    DrawHandle (i);
-                    DrawHandle (i + 1);
-                }
-            }
+            // if (displayControlPoints) {
+            //     for (int i = 1; i < bezierPath.NumPoints - 1; i += 3) {
+            //         DrawHandle (i);
+            //         DrawHandle (i + 1);
+            //     }
+            // }
+        }
+
+        void DrawLine(Vector3 start, Vector3 end, Color color, float width )
+         {
+             GameObject myLine = new GameObject();
+             myLine.transform.position = start;
+             myLine.AddComponent<LineRenderer>();
+             LineRenderer lr = myLine.GetComponent<LineRenderer>();
+             lr.material = (Material) Resources.Load<Material>("Material/MovementPathMaterial");
+             lr.SetColors(color, color);
+             lr.SetWidth(width, width);
+             lr.SetPosition(0, start);
+             lr.SetPosition(1, end);
+         }
+
+         void DrawCurve(List<Vector3> points, Color color, float width, int positionOffset )
+          {
+              bezierPathLr.SetColors(color, color);
+              bezierPathLr.SetWidth(width, width);
+              bezierPathLr.positionCount = positionOffset + points.Count;
+              for( int i = 0; i < points.Count; i++)
+              {
+                  bezierPathLr.SetPosition(i + positionOffset, points[i]);
+              }
+          }
+
+         void DrawBezier( Vector3 startPosition, Vector3 endPosition, Vector3 startTangent, Vector3 endTangent, Color color, float width, int lineOffset )
+        {
+           Vector3 p0 = startPosition;
+           Vector3 p1 = startTangent;
+           Vector3 p3 = endPosition;
+           Vector3 p2 = endTangent;
+
+           float smoothFactor = 1/16f;
+           List<Vector3> bezierPoints = new List<Vector3>();
+           bezierPoints.Add( startPosition );
+           for( float t = smoothFactor; t < 1; t+= smoothFactor )
+           {
+               // here is where the magic happens!
+               bezierPoints.Add( Mathf.Pow(1f-t,3f)*p0+3f*Mathf.Pow(1f-t,2f)*t*p1+3f*(1f-t)*Mathf.Pow(t,2f)*p2+Mathf.Pow(t,3f)*p3 );
+           }
+           bezierPoints.Add( endPosition );
+
+           DrawCurve( bezierPoints, color, width , (int) (lineOffset / smoothFactor));
         }
 
         void DrawHandle (int i) {
@@ -554,12 +644,12 @@ namespace PathCreationEditor {
                 case PathHandle.HandleInputType.LMBDrag:
                     draggingHandleIndex = i;
                     handleIndexToDisplayAsTransform = -1;
-                    Repaint ();
+                    // Repaint ();
                     break;
                 case PathHandle.HandleInputType.LMBRelease:
                     draggingHandleIndex = -1;
                     handleIndexToDisplayAsTransform = -1;
-                    Repaint ();
+                    // Repaint ();
                     break;
                 case PathHandle.HandleInputType.LMBClick:
                     draggingHandleIndex = -1;
@@ -572,12 +662,12 @@ namespace PathCreationEditor {
                             handleIndexToDisplayAsTransform = i;
                         }
                     }
-                    Repaint ();
+                    // Repaint ();
                     break;
                 case PathHandle.HandleInputType.LMBPress:
                     if (handleIndexToDisplayAsTransform != i) {
                         handleIndexToDisplayAsTransform = -1;
-                        Repaint ();
+                        // Repaint ();
                     }
                     break;
             }
@@ -592,17 +682,23 @@ namespace PathCreationEditor {
 
         }
 
-        #endregion
+#endregion
 
-        #region Internal methods
+#region Internal methods
 
         void OnDisable () {
             Tools.hidden = false;
         }
 
         void OnEnable () {
-            creator = (PathCreator) target;
             bool in2DEditorMode = EditorSettings.defaultBehaviorMode == EditorBehaviorMode.Mode2D;
+            if( creator == null )
+            {
+                creator = GetComponent<PathCreator>();
+                handlePrefab = (GameObject) Resources.Load<GameObject>("Prefabs/Knob");
+                bezierPathLr = gameObject.AddComponent<LineRenderer>() as LineRenderer;
+                bezierPathLr.material = (Material) Resources.Load<Material>("Material/MovementPathMaterial");
+            }
             creator.InitializeEditorData (in2DEditorMode);
 
             data.bezierCreated -= ResetState;
@@ -633,7 +729,7 @@ namespace PathCreationEditor {
             hasUpdatedNormalsVertexPath = false;
             selectedSegmentIndex = -1;
 
-            Repaint ();
+            // Repaint ();
         }
 
         void TabChanged () {
@@ -706,7 +802,7 @@ namespace PathCreationEditor {
         float GetHandleDiameter (float diameter, Vector3 handlePosition) {
             float scaledDiameter = diameter * constantHandleScale;
             if (data.keepConstantHandleSize) {
-                scaledDiameter *= HandleUtility.GetHandleSize (handlePosition) * 2.5f;
+                scaledDiameter *= /*HandleUtility.GetHandleSize (handlePosition)*/ 3 * 2.5f;
             }
             return scaledDiameter;
         }
@@ -729,7 +825,7 @@ namespace PathCreationEditor {
             }
         }
 
-        #endregion
+#endregion
 
     }
 

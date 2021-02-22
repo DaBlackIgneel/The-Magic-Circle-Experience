@@ -21,7 +21,8 @@ public class MovementMagicCircle : MagicCircle
     public float maxVelocity = 50;
     public bool dragMagic = true;
     public PathCreation.PathCreator myPath;
-    public PathCreation.EndOfPathInstruction endOfPathInstruction;
+    public PathCreationEditor.PathEditorInGame pathEditor;
+    public PathCreation.EndOfPathInstruction endOfPathInstruction = PathCreation.EndOfPathInstruction.Reverse;
 
     private MagicControllerTracker magicControllerTracker;
     private MagicControllerTracker parentMagicControllerTracker;
@@ -70,6 +71,11 @@ public class MovementMagicCircle : MagicCircle
         if( myMovement == MovementType.Path && myPath == null )
         {
             myPath = gameObject.AddComponent<PathCreation.PathCreator>();
+            if( pathEditor == null )
+            {
+                pathEditor = gameObject.AddComponent<PathCreationEditor.PathEditorInGame>();
+                // pathEditor.SetPath( myPath );
+            }
         }
     }
 
